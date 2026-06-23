@@ -4,6 +4,7 @@ import shutil
 import os
 import hashlib
 import platform
+import threading
 
 class Dashboard(ft.Container):
     def __init__(self, vault: Vault, on_save, on_lock, on_change_password):
@@ -331,9 +332,17 @@ class Dashboard(ft.Container):
             def copy_to_clipboard(val):
                 
                 self.page.set_clipboard(val)
-                self.page.snack_bar = ft.SnackBar(ft.Text("Copied to clipboard!"))
+                self.page.snack_bar = ft.SnackBar(ft.Text("Copied to clipboard! (Auto-clears in 15s)"))
                 self.page.snack_bar.open = True
                 self.page.update()
+                
+                def clear_clipboard():
+                    if self.page:
+                        self.page.set_clipboard("")
+                
+                t = threading.Timer(15.0, clear_clipboard)
+                t.daemon = True
+                t.start()
 
             accounts_col = ft.Column(spacing=10)
             

@@ -77,6 +77,6 @@ def main(page: ft.Page):
 if __name__ == "__main__":
     import sys
     if "--web" in sys.argv:
-        ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=8550)
+        ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=8550, host="127.0.0.1")
     else:
         ft.app(target=main)
