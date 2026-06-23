@@ -74,4 +74,8 @@ def main(page: ft.Page):
     show_login()
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    import sys
+    if "--web" in sys.argv:
+        ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=8550)
+    else:
+        ft.app(target=main)
