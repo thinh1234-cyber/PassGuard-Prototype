@@ -194,7 +194,7 @@ class Dashboard(ft.Container):
             self.page.snack_bar.open = True
             self.page.update()
 
-    def export_result(self, e: ft.FilePickerResultEvent):
+    def export_result(self, e):
         if e.path:
             try:
                 shutil.copy("vault.luupass", e.path)
@@ -204,7 +204,7 @@ class Dashboard(ft.Container):
             self.page.snack_bar.open = True
             self.page.update()
 
-    def import_result(self, e: ft.FilePickerResultEvent):
+    def import_result(self, e):
         if e.files and len(e.files) > 0:
             try:
                 shutil.copy(e.files[0].path, "vault.luupass")
