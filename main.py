@@ -64,7 +64,12 @@ def main(page: ft.Page):
             current_password[0] = None
             show_login()
 
-        dashboard = Dashboard(vault, on_save, on_lock)
+        def on_change_password(new_password):
+            current_password[0] = new_password
+            if vault:
+                storage.save(vault, current_password[0])
+
+        dashboard = Dashboard(vault, on_save, on_lock, on_change_password)
         page.add(dashboard)
 
     show_login()

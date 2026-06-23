@@ -5,12 +5,12 @@ import shutil
 import os
 
 class Dashboard(ft.Container):
-    def __init__(self, vault: Vault, on_save, on_lock, on_reload):
+    def __init__(self, vault: Vault, on_save, on_lock, on_change_password):
         super().__init__(expand=True)
         self.vault = vault
         self.on_save = on_save
         self.on_lock = on_lock
-        self.on_reload = on_reload
+        self.on_change_password = on_change_password
         self.selected_entry = None
         self.show_settings = False
         self.entries_list_view = ft.ListView(expand=1, spacing=10, padding=20)
@@ -138,7 +138,6 @@ class Dashboard(ft.Container):
                 self.page.snack_bar = ft.SnackBar(ft.Text("Vault Imported Successfully! Please unlock again."), bgcolor=ft.colors.GREEN)
                 self.page.snack_bar.open = True
                 self.page.update()
-                # Lock the vault so they re-authenticate with the new file
                 self.on_lock()
             except Exception as ex:
                 self.page.snack_bar = ft.SnackBar(ft.Text(f"Import Error: {ex}"), bgcolor=ft.colors.ERROR)
@@ -167,16 +166,32 @@ class Dashboard(ft.Container):
             on_click=lambda _: self.import_picker.pick_files(allowed_extensions=["luupass"])
         )
 
+        new_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=300)
+        
+        def change_pass_clicked(e):
+            if new_pass_field.value:
+                self.on_change_password(new_pass_field.value)
+                new_pass_field.value = ""
+                new_pass_field.update()
+                self.page.snack_bar = ft.SnackBar(ft.Text("Password Changed Successfully!"), bgcolor=ft.colors.GREEN)
+                self.page.snack_bar.open = True
+                self.page.update()
+
+        change_pass_btn = ft.ElevatedButton("Change Password", icon=ft.icons.PASSWORD, on_click=change_pass_clicked)
+
         return ft.Column([
             ft.Text("Settings", size=30, weight=ft.FontWeight.BOLD),
             ft.Divider(),
             ft.Text("UI Configuration", weight=ft.FontWeight.BOLD, size=20),
             theme_btn,
             ft.Container(height=20),
+            ft.Text("Change Master Password", weight=ft.FontWeight.BOLD, size=20),
+            ft.Row([new_pass_field, change_pass_btn]),
+            ft.Container(height=20),
             ft.Text("Data Management", weight=ft.FontWeight.BOLD, size=20),
             ft.Text("Warning: Importing will replace your current local vault. Make sure to export a backup first!", color=ft.colors.ERROR),
             ft.Row([export_btn, import_btn]),
-        ])
+        ], scroll=ft.ScrollMode.AUTO)
 
     def update_detail_view(self):
         if self.show_settings:
