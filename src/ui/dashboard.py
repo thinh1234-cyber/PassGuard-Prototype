@@ -287,7 +287,8 @@ class Dashboard(ft.Container):
             if new_pass_field.value:
                 self.on_change_password(new_pass_field.value)
                 new_pass_field.value = ""
-                new_pass_field.update()
+                if getattr(new_pass_field, "page", None):
+                    new_pass_field.update()
                 self.page.snack_bar = ft.SnackBar(ft.Text("Password Changed Successfully!"), bgcolor=ft.colors.GREEN)
                 self.page.snack_bar.open = True
                 self.page.update()
@@ -355,9 +356,9 @@ class Dashboard(ft.Container):
                 p_field = ft.TextField(label="Password", value=account.password, password=True, can_reveal_password=True, on_change=lambda e: update_acc('password', e.control.value), expand=True)
                 
                 def remove_acc(e):
-                    
-                    entry.accounts.remove(account)
-                    self.update_detail_view()
+                    if account in entry.accounts:
+                        entry.accounts.remove(account)
+                        self.update_detail_view()
                 
                 return ft.Container(
                     content=ft.Column([
