@@ -1,17 +1,29 @@
 import flet as ft
 from src.models import Vault, Entry, Account
 import urllib.parse
+import shutil
+import os
 
 class Dashboard(ft.Container):
-    def __init__(self, vault: Vault, on_save, on_lock):
+    def __init__(self, vault: Vault, on_save, on_lock, on_reload):
         super().__init__(expand=True)
         self.vault = vault
         self.on_save = on_save
         self.on_lock = on_lock
+        self.on_reload = on_reload
         self.selected_entry = None
+        self.show_settings = False
         self.entries_list_view = ft.ListView(expand=1, spacing=10, padding=20)
         self.detail_view_container = ft.Container(expand=2, padding=20, bgcolor=ft.colors.SURFACE_VARIANT, border_radius=10)
+        
+        self.export_picker = ft.FilePicker(on_result=self.export_result)
+        self.import_picker = ft.FilePicker(on_result=self.import_result)
+        
         self._build_ui()
+
+    def did_mount(self):
+        self.page.overlay.extend([self.export_picker, self.import_picker])
+        self.page.update()
 
     def _build_ui(self):
         self.update_list_view()
@@ -23,7 +35,9 @@ class Dashboard(ft.Container):
                 ft.Divider(),
                 ft.TextButton("All Items", icon=ft.icons.LIST, on_click=lambda e: self.select_entry(None)),
                 ft.TextButton("Add New Platform", icon=ft.icons.ADD, on_click=self.add_new_entry),
+                ft.Container(expand=True),  # Pushes the below items to the bottom
                 ft.Divider(),
+                ft.TextButton("Settings", icon=ft.icons.SETTINGS, on_click=self.open_settings),
                 ft.TextButton("Lock Vault", icon=ft.icons.LOCK, on_click=lambda e: self.on_lock())
             ]),
             width=200,
@@ -68,18 +82,26 @@ class Dashboard(ft.Container):
                     subtitle=ft.Text(subtitle),
                     leading=leading_icon,
                     on_click=lambda e, entry=entry: self.select_entry(entry),
-                    selected=(self.selected_entry == entry)
+                    selected=(self.selected_entry == entry and not self.show_settings)
                 )
             )
         if self.page:
             self.entries_list_view.update()
 
     def select_entry(self, entry):
+        self.show_settings = False
         self.selected_entry = entry
         self.update_list_view()
         self.update_detail_view()
 
+    def open_settings(self, e):
+        self.show_settings = True
+        self.selected_entry = None
+        self.update_list_view()
+        self.update_detail_view()
+
     def add_new_entry(self, e):
+        self.show_settings = False
         new_entry = Entry(title="New Platform", accounts=[Account(username="", password="")])
         self.vault.entries.append(new_entry)
         self.select_entry(new_entry)
@@ -99,8 +121,67 @@ class Dashboard(ft.Container):
             self.page.snack_bar.open = True
             self.page.update()
 
+    def export_result(self, e: ft.FilePickerResultEvent):
+        if e.path:
+            try:
+                shutil.copy("vault.luupass", e.path)
+                self.page.snack_bar = ft.SnackBar(ft.Text("Vault Exported Successfully!"), bgcolor=ft.colors.GREEN)
+            except Exception as ex:
+                self.page.snack_bar = ft.SnackBar(ft.Text(f"Export Error: {ex}"), bgcolor=ft.colors.ERROR)
+            self.page.snack_bar.open = True
+            self.page.update()
+
+    def import_result(self, e: ft.FilePickerResultEvent):
+        if e.files and len(e.files) > 0:
+            try:
+                shutil.copy(e.files[0].path, "vault.luupass")
+                self.page.snack_bar = ft.SnackBar(ft.Text("Vault Imported Successfully! Please unlock again."), bgcolor=ft.colors.GREEN)
+                self.page.snack_bar.open = True
+                self.page.update()
+                # Lock the vault so they re-authenticate with the new file
+                self.on_lock()
+            except Exception as ex:
+                self.page.snack_bar = ft.SnackBar(ft.Text(f"Import Error: {ex}"), bgcolor=ft.colors.ERROR)
+                self.page.snack_bar.open = True
+                self.page.update()
+
+    def toggle_theme(self, e):
+        if self.page.theme_mode == ft.ThemeMode.DARK:
+            self.page.theme_mode = ft.ThemeMode.LIGHT
+        else:
+            self.page.theme_mode = ft.ThemeMode.DARK
+        self.page.update()
+
+    def build_settings_view(self):
+        theme_btn = ft.ElevatedButton("Toggle Light/Dark Mode", icon=ft.icons.PALETTE, on_click=self.toggle_theme)
+        
+        export_btn = ft.ElevatedButton(
+            "Export Vault (.luupass)", 
+            icon=ft.icons.DOWNLOAD, 
+            on_click=lambda _: self.export_picker.save_file(allowed_extensions=["luupass"])
+        )
+        
+        import_btn = ft.ElevatedButton(
+            "Import Vault (.luupass)", 
+            icon=ft.icons.UPLOAD, 
+            on_click=lambda _: self.import_picker.pick_files(allowed_extensions=["luupass"])
+        )
+
+        return ft.Column([
+            ft.Text("Settings", size=30, weight=ft.FontWeight.BOLD),
+            ft.Divider(),
+            ft.Text("UI Configuration", weight=ft.FontWeight.BOLD, size=20),
+            theme_btn,
+            ft.Container(height=20),
+            ft.Text("Data Management", weight=ft.FontWeight.BOLD, size=20),
+            ft.Text("Warning: Importing will replace your current local vault. Make sure to export a backup first!", color=ft.colors.ERROR),
+            ft.Row([export_btn, import_btn]),
+        ])
+
     def update_detail_view(self):
-        if not self.selected_entry:
+        if self.show_settings:
+            self.detail_view_container.content = self.build_settings_view()
+        elif not self.selected_entry:
             self.detail_view_container.content = ft.Container(
                 content=ft.Text("Select a platform to view details", color=ft.colors.ON_SURFACE_VARIANT),
                 alignment=ft.alignment.center
