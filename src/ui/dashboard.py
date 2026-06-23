@@ -13,8 +13,8 @@ class Dashboard(ft.Container):
         self.on_change_password = on_change_password
         self.selected_entry = None
         self.show_settings = False
-        self.entries_list_view = ft.ListView(expand=1, spacing=10, padding=20)
-        self.detail_view_container = ft.Container(expand=2, padding=20, bgcolor=ft.colors.SURFACE_VARIANT, border_radius=10)
+        self.entries_list_view = ft.ListView(expand=True, spacing=10, padding=20)
+        self.detail_view_container = ft.Container(expand=True, padding=20, bgcolor=ft.colors.SURFACE_VARIANT, border_radius=10)
         
         self.export_picker = ft.FilePicker(on_result=self.export_result)
         self.import_picker = ft.FilePicker(on_result=self.import_result)
@@ -23,13 +23,64 @@ class Dashboard(ft.Container):
 
     def did_mount(self):
         self.page.overlay.extend([self.export_picker, self.import_picker])
+        self.page.on_resize = self.handle_resize
+        self.handle_resize()
         self.page.update()
 
-    def _build_ui(self):
-        self.update_list_view()
-        self.update_detail_view()
+    def handle_resize(self, e=None):
+        if not self.page:
+            return
+        is_mobile = self.page.width < 800
 
-        sidebar = ft.Container(
+        if is_mobile:
+            self.sidebar.visible = False
+            self.top_bar.visible = True
+            self.div1.visible = False
+            self.div2.visible = False
+
+            if self.selected_entry or self.show_settings:
+                # Show Detail Only
+                self.list_container.visible = False
+                self.list_container.expand = False
+                self.detail_view_container.visible = True
+                self.btn_back.visible = True
+            else:
+                # Show List Only
+                self.list_container.visible = True
+                self.list_container.expand = True
+                self.detail_view_container.visible = False
+                self.btn_back.visible = False
+        else:
+            # Desktop Mode
+            self.sidebar.visible = True
+            self.top_bar.visible = False
+            self.div1.visible = True
+            self.div2.visible = True
+            
+            self.list_container.visible = True
+            self.list_container.expand = False
+            self.list_container.width = 300
+            
+            self.detail_view_container.visible = True
+
+        self.update()
+
+    def _build_ui(self):
+        self.btn_back = ft.IconButton(ft.icons.ARROW_BACK, on_click=self.go_back, visible=False)
+        self.top_bar = ft.Container(
+            content=ft.Row([
+                self.btn_back,
+                ft.Text("LuuPass", size=20, weight=ft.FontWeight.BOLD, expand=True),
+                ft.IconButton(ft.icons.ADD, on_click=self.add_new_entry, tooltip="Add Platform"),
+                ft.IconButton(ft.icons.SETTINGS, on_click=self.open_settings, tooltip="Settings"),
+                ft.IconButton(ft.icons.LOCK, on_click=lambda e: self.on_lock(), tooltip="Lock Vault")
+            ]),
+            padding=ft.padding.symmetric(horizontal=10, vertical=5),
+            bgcolor=ft.colors.SURFACE,
+            visible=False
+        )
+
+        self.sidebar = ft.Container(
             content=ft.Column([
                 ft.Text("LuuPass", size=24, weight=ft.FontWeight.BOLD),
                 ft.Divider(),
@@ -45,13 +96,25 @@ class Dashboard(ft.Container):
             bgcolor=ft.colors.SURFACE
         )
 
-        self.content = ft.Row([
-            sidebar,
-            ft.VerticalDivider(width=1),
-            ft.Container(content=self.entries_list_view, width=300),
-            ft.VerticalDivider(width=1),
+        self.list_container = ft.Container(content=self.entries_list_view, width=300)
+        self.div1 = ft.VerticalDivider(width=1)
+        self.div2 = ft.VerticalDivider(width=1)
+
+        self.main_content = ft.Row([
+            self.sidebar,
+            self.div1,
+            self.list_container,
+            self.div2,
             self.detail_view_container
         ], expand=True)
+
+        self.content = ft.Column([
+            self.top_bar,
+            self.main_content
+        ], expand=True)
+
+        self.update_list_view()
+        self.update_detail_view()
 
     def get_favicon_url(self, url):
         if not url:
@@ -93,12 +156,21 @@ class Dashboard(ft.Container):
         self.selected_entry = entry
         self.update_list_view()
         self.update_detail_view()
+        self.handle_resize()
 
     def open_settings(self, e):
         self.show_settings = True
         self.selected_entry = None
         self.update_list_view()
         self.update_detail_view()
+        self.handle_resize()
+
+    def go_back(self, e):
+        self.show_settings = False
+        self.selected_entry = None
+        self.update_list_view()
+        self.update_detail_view()
+        self.handle_resize()
 
     def add_new_entry(self, e):
         self.show_settings = False
@@ -112,6 +184,7 @@ class Dashboard(ft.Container):
         self.on_save(self.vault)
         self.update_list_view()
         self.update_detail_view()
+        self.handle_resize()
 
     def save_current_entry(self, e):
         self.on_save(self.vault)
