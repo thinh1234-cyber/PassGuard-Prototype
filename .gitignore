@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest
+.pytest_cache/
+
+# Flet / Build
+build/
+dist/
+*.spec
+
+# LuuPass Vault (ignore default dev vaults)
+vault.luupass
+
+# Environment
+.env
+venv/
+env/
