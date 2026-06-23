@@ -1,6 +1,7 @@
 import flet as ft
 from src.storage import VaultStorage
 from src.ui.dashboard import Dashboard
+import threading
 
 def main(page: ft.Page):
     page.title = "LuuPass"
@@ -55,20 +56,41 @@ def main(page: ft.Page):
         page.vertical_alignment = ft.MainAxisAlignment.START
         page.horizontal_alignment = ft.CrossAxisAlignment.START
         
+        def do_lock():
+            current_password[0] = None
+            show_login()
+            page.update()
+
+        class AutoLocker:
+            def __init__(self):
+                self.timer = None
+            def reset(self):
+                if self.timer:
+                    self.timer.cancel()
+                self.timer = threading.Timer(300, do_lock) # 5 minutes auto-lock
+                self.timer.daemon = True
+                self.timer.start()
+            def cancel(self):
+                if self.timer:
+                    self.timer.cancel()
+
+        auto_locker = AutoLocker()
+        auto_locker.reset()
+        
         def on_save(updated_vault):
             if current_password[0]:
                 storage.save(updated_vault, current_password[0])
                 
         def on_lock():
-            current_password[0] = None
-            show_login()
+            auto_locker.cancel()
+            do_lock()
 
         def on_change_password(new_password):
             current_password[0] = new_password
             if vault:
                 storage.save(vault, current_password[0])
 
-        dashboard = Dashboard(vault, on_save, on_lock, on_change_password)
+        dashboard = Dashboard(vault, on_save, on_lock, on_change_password, auto_locker.reset)
         page.add(dashboard)
 
     show_login()

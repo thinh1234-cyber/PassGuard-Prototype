@@ -1,18 +1,21 @@
 import flet as ft
 from src.models import Vault, Entry, Account
-import urllib.parse
 import shutil
 import os
+import hashlib
+import platform
 
 class Dashboard(ft.Container):
-    def __init__(self, vault: Vault, on_save, on_lock, on_change_password):
+    def __init__(self, vault: Vault, on_save, on_lock, on_change_password, reset_timer):
         super().__init__(expand=True)
         self.vault = vault
         self.on_save = on_save
         self.on_lock = on_lock
         self.on_change_password = on_change_password
+        self.reset_timer = reset_timer
         self.selected_entry = None
         self.show_settings = False
+        self.search_query = ""
         self.entries_list_view = ft.ListView(expand=True, spacing=10, padding=20)
         self.detail_view_container = ft.Container(expand=True, padding=20, bgcolor=ft.colors.SURFACE_VARIANT, border_radius=10)
         
@@ -98,32 +101,58 @@ class Dashboard(ft.Container):
             bgcolor=ft.colors.SURFACE
         )
 
-        self.list_container = ft.Container(content=self.entries_list_view, width=300)
+        self.search_field = ft.TextField(
+            hint_text="Search...", 
+            prefix_icon=ft.icons.SEARCH, 
+            on_change=self.on_search_change,
+            border_radius=20,
+            content_padding=10
+        )
+        self.list_container = ft.Container(
+            content=ft.Column([
+                ft.Container(self.search_field, padding=10),
+                ft.Container(self.entries_list_view, expand=True)
+            ]), 
+            width=300
+        )
         
         self.content = ft.Column([], expand=True) # Will be populated by handle_resize
 
         self.update_list_view()
         self.update_detail_view()
 
-    def get_favicon_url(self, url):
-        if not url:
-            return None
-        if not url.startswith("http"):
-            url = "https://" + url
-        try:
-            domain = urllib.parse.urlparse(url).netloc
-            return f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
-        except Exception:
-            return None
+    def on_search_change(self, e):
+        self.reset_timer()
+        self.search_query = e.control.value
+        self.update_list_view()
+
+    def get_offline_favicon(self, title):
+        letter = title[0].upper() if title else "?"
+        colors = [
+            ft.colors.RED, ft.colors.BLUE, ft.colors.GREEN, ft.colors.ORANGE, 
+            ft.colors.PURPLE, ft.colors.TEAL, ft.colors.PINK, ft.colors.BROWN
+        ]
+        color_idx = int(hashlib.md5((title or "").encode('utf-8')).hexdigest(), 16) % len(colors)
+        return ft.CircleAvatar(content=ft.Text(letter, color=ft.colors.WHITE), bgcolor=colors[color_idx])
 
     def update_list_view(self):
         self.entries_list_view.controls.clear()
+        query = self.search_query.lower()
+        
         for entry in self.vault.entries:
-            favicon = self.get_favicon_url(entry.url)
-            if favicon:
-                leading_icon = ft.Image(src=favicon, width=24, height=24, border_radius=12)
-            else:
-                leading_icon = ft.Icon(ft.icons.LANGUAGE)
+            if query:
+                match = False
+                if query in (entry.title or "").lower() or query in (entry.url or "").lower():
+                    match = True
+                else:
+                    for acc in entry.accounts:
+                        if query in (acc.username or "").lower():
+                            match = True
+                            break
+                if not match:
+                    continue
+
+            leading_icon = self.get_offline_favicon(entry.title)
 
             acc_count = len(entry.accounts)
             subtitle = f"{acc_count} account{'s' if acc_count != 1 else ''}"
@@ -141,6 +170,7 @@ class Dashboard(ft.Container):
             self.entries_list_view.update()
 
     def select_entry(self, entry):
+        self.reset_timer()
         self.show_settings = False
         self.selected_entry = entry
         self.update_list_view()
@@ -148,6 +178,7 @@ class Dashboard(ft.Container):
         self.handle_resize()
 
     def open_settings(self, e):
+        self.reset_timer()
         self.show_settings = True
         self.selected_entry = None
         self.update_list_view()
@@ -155,6 +186,7 @@ class Dashboard(ft.Container):
         self.handle_resize()
 
     def go_back(self, e):
+        self.reset_timer()
         self.show_settings = False
         self.selected_entry = None
         self.update_list_view()
@@ -162,12 +194,14 @@ class Dashboard(ft.Container):
         self.handle_resize()
 
     def add_new_entry(self, e):
+        self.reset_timer()
         self.show_settings = False
         new_entry = Entry(title="New Platform", accounts=[Account(username="", password="")])
         self.vault.entries.append(new_entry)
         self.select_entry(new_entry)
 
     def delete_entry(self, entry):
+        self.reset_timer()
         self.vault.entries.remove(entry)
         self.selected_entry = None
         self.on_save(self.vault)
@@ -176,6 +210,7 @@ class Dashboard(ft.Container):
         self.handle_resize()
 
     def save_current_entry(self, e):
+        self.reset_timer()
         self.on_save(self.vault)
         self.update_list_view()
         if self.page:
@@ -184,6 +219,7 @@ class Dashboard(ft.Container):
             self.page.update()
 
     def export_result(self, e):
+        self.reset_timer()
         if e.path:
             try:
                 shutil.copy("vault.luupass", e.path)
@@ -194,6 +230,7 @@ class Dashboard(ft.Container):
             self.page.update()
 
     def import_result(self, e):
+        self.reset_timer()
         if e.files and len(e.files) > 0:
             try:
                 shutil.copy(e.files[0].path, "vault.luupass")
@@ -207,6 +244,7 @@ class Dashboard(ft.Container):
                 self.page.update()
 
     def toggle_theme(self, e):
+        self.reset_timer()
         if self.page.theme_mode == ft.ThemeMode.DARK:
             self.page.theme_mode = ft.ThemeMode.LIGHT
         else:
@@ -216,11 +254,25 @@ class Dashboard(ft.Container):
     def build_settings_view(self):
         theme_btn = ft.ElevatedButton("Toggle Light/Dark Mode", icon=ft.icons.PALETTE, on_click=self.toggle_theme)
         
-        export_btn = ft.ElevatedButton(
-            "Export Vault (.luupass)", 
-            icon=ft.icons.DOWNLOAD, 
-            on_click=lambda _: self.export_picker.save_file(allowed_extensions=["luupass"])
-        )
+        default_export = "/storage/emulated/0/Download" if "android" in platform.platform().lower() else os.path.expanduser("~/Downloads")
+        export_path_field = ft.TextField(label="Export Folder Path", value=default_export, expand=True, on_change=lambda _: self.reset_timer())
+        
+        def export_to_path(e):
+            self.reset_timer()
+            dest_dir = export_path_field.value
+            if not os.path.exists(dest_dir):
+                self.page.snack_bar = ft.SnackBar(ft.Text(f"Directory not found: {dest_dir}"), bgcolor=ft.colors.ERROR)
+            else:
+                dest_file = os.path.join(dest_dir, "vault_backup.luupass")
+                try:
+                    shutil.copy("vault.luupass", dest_file)
+                    self.page.snack_bar = ft.SnackBar(ft.Text(f"Exported to {dest_file}!"), bgcolor=ft.colors.GREEN)
+                except Exception as ex:
+                    self.page.snack_bar = ft.SnackBar(ft.Text(f"Export Error: {ex}"), bgcolor=ft.colors.ERROR)
+            self.page.snack_bar.open = True
+            self.page.update()
+
+        export_btn = ft.ElevatedButton("Export to Folder", icon=ft.icons.DOWNLOAD, on_click=export_to_path)
         
         import_btn = ft.ElevatedButton(
             "Import Vault (.luupass)", 
@@ -228,9 +280,10 @@ class Dashboard(ft.Container):
             on_click=lambda _: self.import_picker.pick_files(allowed_extensions=["luupass"])
         )
 
-        new_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=300)
+        new_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=300, on_change=lambda _: self.reset_timer())
         
         def change_pass_clicked(e):
+            self.reset_timer()
             if new_pass_field.value:
                 self.on_change_password(new_pass_field.value)
                 new_pass_field.value = ""
@@ -252,7 +305,9 @@ class Dashboard(ft.Container):
             ft.Container(height=20),
             ft.Text("Data Management", weight=ft.FontWeight.BOLD, size=20),
             ft.Text("Warning: Importing will replace your current local vault. Make sure to export a backup first!", color=ft.colors.ERROR),
-            ft.Row([export_btn, import_btn]),
+            ft.Row([export_path_field, export_btn]),
+            ft.Container(height=10),
+            ft.Row([import_btn]),
         ], scroll=ft.ScrollMode.AUTO)
 
     def update_detail_view(self):
@@ -267,6 +322,7 @@ class Dashboard(ft.Container):
             entry = self.selected_entry
             
             def update_entry_field(field, value):
+                self.reset_timer()
                 setattr(entry, field, value)
 
             title_field = ft.TextField(label="Platform / Title", value=entry.title, on_change=lambda e: update_entry_field('title', e.control.value), expand=True)
@@ -274,6 +330,7 @@ class Dashboard(ft.Container):
             notes_field = ft.TextField(label="Notes", value=entry.notes, multiline=True, on_change=lambda e: update_entry_field('notes', e.control.value))
 
             def copy_to_clipboard(val):
+                self.reset_timer()
                 self.page.set_clipboard(val)
                 self.page.snack_bar = ft.SnackBar(ft.Text("Copied to clipboard!"))
                 self.page.snack_bar.open = True
@@ -283,12 +340,14 @@ class Dashboard(ft.Container):
             
             def build_account_row(account):
                 def update_acc(field, value):
+                    self.reset_timer()
                     setattr(account, field, value)
                 
                 u_field = ft.TextField(label="Username", value=account.username, on_change=lambda e: update_acc('username', e.control.value), expand=True)
                 p_field = ft.TextField(label="Password", value=account.password, password=True, can_reveal_password=True, on_change=lambda e: update_acc('password', e.control.value), expand=True)
                 
                 def remove_acc(e):
+                    self.reset_timer()
                     entry.accounts.remove(account)
                     self.update_detail_view()
                 
@@ -311,6 +370,7 @@ class Dashboard(ft.Container):
                 accounts_col.controls.append(build_account_row(acc))
 
             def add_account(e):
+                self.reset_timer()
                 entry.accounts.append(Account())
                 self.update_detail_view()
 

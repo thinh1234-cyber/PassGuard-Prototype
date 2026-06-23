@@ -10,8 +10,12 @@ class VaultStorage:
     def save(self, vault: Vault, password: str):
         data = vault.model_dump_json().encode('utf-8')
         salt, encrypted_data = self.crypto.encrypt(data, password)
-        with open(self.filepath, 'wb') as f:
+        
+        tmp_filepath = self.filepath + ".tmp"
+        with open(tmp_filepath, 'wb') as f:
             f.write(salt + encrypted_data)
+        
+        os.replace(tmp_filepath, self.filepath)
 
     def load(self, password: str) -> Vault:
         if not os.path.exists(self.filepath):
