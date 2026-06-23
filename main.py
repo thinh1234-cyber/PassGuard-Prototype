@@ -2,6 +2,7 @@ import flet as ft
 from src.storage import VaultStorage
 from src.ui.dashboard import Dashboard
 import threading
+import time
 
 def main(page: ft.Page):
     page.title = "LuuPass"
@@ -63,16 +64,24 @@ def main(page: ft.Page):
 
         class AutoLocker:
             def __init__(self):
-                self.timer = None
+                self.last_activity = time.time()
+                self.running = True
+                self.lock_thread = threading.Thread(target=self._check_loop, daemon=True)
+                self.lock_thread.start()
+
+            def _check_loop(self):
+                while self.running:
+                    time.sleep(5)
+                    if self.running and time.time() - self.last_activity > 300:
+                        self.running = False
+                        do_lock()
+                        break
+
             def reset(self):
-                if self.timer:
-                    self.timer.cancel()
-                self.timer = threading.Timer(300, do_lock) # 5 minutes auto-lock
-                self.timer.daemon = True
-                self.timer.start()
+                self.last_activity = time.time()
+
             def cancel(self):
-                if self.timer:
-                    self.timer.cancel()
+                self.running = False
 
         auto_locker = AutoLocker()
         auto_locker.reset()
