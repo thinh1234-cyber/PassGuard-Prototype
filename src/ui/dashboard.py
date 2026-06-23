@@ -254,7 +254,7 @@ class Dashboard(ft.Container):
         theme_btn = ft.ElevatedButton("Toggle Light/Dark Mode", icon=ft.icons.PALETTE, on_click=self.toggle_theme)
         
         default_export = "/storage/emulated/0/Download" if "android" in platform.platform().lower() else os.path.expanduser("~/Downloads")
-        export_path_field = ft.TextField(label="Export Folder Path", value=default_export, expand=True, on_change=lambda _: )
+        export_path_field = ft.TextField(label="Export Folder Path", value=default_export, expand=True)
         
         def export_to_path(e):
             
@@ -279,7 +279,7 @@ class Dashboard(ft.Container):
             on_click=lambda _: self.import_picker.pick_files(allowed_extensions=["luupass"])
         )
 
-        new_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=300, on_change=lambda _: )
+        new_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=300)
         
         def change_pass_clicked(e):
             
