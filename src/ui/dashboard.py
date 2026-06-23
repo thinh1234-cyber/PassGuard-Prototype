@@ -363,7 +363,8 @@ class Dashboard(ft.Container):
                             break
                     if row_container in accounts_col.controls:
                         accounts_col.controls.remove(row_container)
-                    accounts_col.update()
+                    if getattr(accounts_col, "page", None):
+                        accounts_col.update()
                     if self.page:
                         self.page.update()
                 
@@ -387,7 +388,8 @@ class Dashboard(ft.Container):
                 new_acc = Account(username="", password="")
                 entry.accounts.append(new_acc)
                 accounts_col.controls.append(build_account_row(new_acc))
-                accounts_col.update()
+                if getattr(accounts_col, "page", None):
+                    accounts_col.update()
                 if self.page:
                     self.page.update()
 
