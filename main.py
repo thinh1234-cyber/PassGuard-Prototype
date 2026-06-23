@@ -32,9 +32,8 @@ def main(page: ft.Page):
                 show_dashboard(vault)
             except Exception as ex:
                 import traceback
-                traceback.print_exc()
-                page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor=ft.colors.ERROR)
-                page.snack_bar.open = True
+                page.controls.clear()
+                page.add(ft.Text(f"CRASH: {ex}\n\n{traceback.format_exc()}", color=ft.colors.ERROR, selectable=True))
                 page.update()
 
         page.add(
