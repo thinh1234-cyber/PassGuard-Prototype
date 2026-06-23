@@ -9,11 +9,11 @@ class VaultStorage:
 
     def save(self, vault: Vault, password: str):
         data = vault.model_dump_json().encode('utf-8')
-        salt, encrypted_data = self.crypto.encrypt(data, password)
+        encrypted_payload = self.crypto.encrypt(data, password)
         
         tmp_filepath = self.filepath + ".tmp"
         with open(tmp_filepath, 'wb') as f:
-            f.write(salt + encrypted_data)
+            f.write(encrypted_payload)
         
         os.replace(tmp_filepath, self.filepath)
 
@@ -24,10 +24,8 @@ class VaultStorage:
             content = f.read()
         if not content:
             return Vault()
-        salt = content[:16]
-        encrypted_data = content[16:]
         try:
-            decrypted_data = self.crypto.decrypt(encrypted_data, password, salt)
+            decrypted_data = self.crypto.decrypt(content, password)
             return Vault.model_validate_json(decrypted_data.decode('utf-8'))
         except Exception as e:
             raise ValueError("Failed to unlock vault") from e
