@@ -348,40 +348,43 @@ class Dashboard(ft.Container):
             accounts_col = ft.Column(spacing=10)
             
             def build_account_row(account):
+                row_container = ft.Container(padding=10, border=ft.border.all(1, ft.colors.OUTLINE), border_radius=5)
+                
                 def update_acc(field, value):
-                    
                     setattr(account, field, value)
                 
                 u_field = ft.TextField(label="Username", value=account.username, on_change=lambda e: update_acc('username', e.control.value), expand=True)
                 p_field = ft.TextField(label="Password", value=account.password, password=True, can_reveal_password=True, on_change=lambda e: update_acc('password', e.control.value), expand=True)
                 
                 def remove_acc(e):
-                    if account in entry.accounts:
-                        entry.accounts.remove(account)
-                        self.update_detail_view()
+                    for i, a in enumerate(entry.accounts):
+                        if a is account:
+                            entry.accounts.pop(i)
+                            break
+                    accounts_col.controls.remove(row_container)
+                    accounts_col.update()
                 
-                return ft.Container(
-                    content=ft.Column([
-                        ft.Row([
-                            u_field, 
-                            ft.IconButton(icon=ft.icons.COPY, on_click=lambda e: copy_to_clipboard(u_field.value))
-                        ]),
-                        ft.Row([
-                            p_field, 
-                            ft.IconButton(icon=ft.icons.COPY, on_click=lambda e: copy_to_clipboard(p_field.value)),
-                            ft.IconButton(icon=ft.icons.REMOVE_CIRCLE, icon_color=ft.colors.ERROR, tooltip="Remove Account", on_click=remove_acc)
-                        ])
+                row_container.content = ft.Column([
+                    ft.Row([
+                        u_field, 
+                        ft.IconButton(icon=ft.icons.COPY, on_click=lambda e: copy_to_clipboard(u_field.value))
                     ]),
-                    padding=10, border=ft.border.all(1, ft.colors.OUTLINE), border_radius=5
-                )
+                    ft.Row([
+                        p_field, 
+                        ft.IconButton(icon=ft.icons.COPY, on_click=lambda e: copy_to_clipboard(p_field.value)),
+                        ft.IconButton(icon=ft.icons.REMOVE_CIRCLE, icon_color=ft.colors.ERROR, tooltip="Remove Account", on_click=remove_acc)
+                    ])
+                ])
+                return row_container
 
             for acc in entry.accounts:
                 accounts_col.controls.append(build_account_row(acc))
 
             def add_account(e):
-                
-                entry.accounts.append(Account())
-                self.update_detail_view()
+                new_acc = Account(username="", password="")
+                entry.accounts.append(new_acc)
+                accounts_col.controls.append(build_account_row(new_acc))
+                accounts_col.update()
 
             actions_row = ft.Row([
                 ft.ElevatedButton("Add Another Account", icon=ft.icons.ADD, on_click=add_account),
