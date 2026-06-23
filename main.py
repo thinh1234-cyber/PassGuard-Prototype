@@ -110,8 +110,33 @@ if __name__ == "__main__":
         
         def open_browser():
             time.sleep(1.5)
-            # Use original open to open our secure URL
-            original_open(url)
+            import subprocess
+            import os
+            
+            is_termux = "com.termux" in os.environ.get("PREFIX", "")
+            opened = False
+            
+            if is_termux:
+                try:
+                    # Android Termux: Try Chrome Incognito
+                    subprocess.run([
+                        "am", "start", "-n", "com.android.chrome/com.google.android.apps.chrome.Main", 
+                        "-d", url, "--es", "com.google.android.apps.chrome.EXTRA_OPEN_NEW_INCOGNITO_TAB", "true"
+                    ], check=True, capture_output=True)
+                    opened = True
+                except Exception:
+                    pass
+            elif sys.platform == "win32":
+                try:
+                    # Windows: Try Chrome Incognito
+                    subprocess.run(["cmd", "/c", f"start chrome --incognito {url}"], check=True, capture_output=True)
+                    opened = True
+                except Exception:
+                    pass
+            
+            if not opened:
+                # Fallback to default browser
+                original_open(url)
             
         threading.Thread(target=open_browser, daemon=True).start()
         
