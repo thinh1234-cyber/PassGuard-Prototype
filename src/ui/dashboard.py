@@ -33,35 +33,37 @@ class Dashboard(ft.Container):
         is_mobile = self.page.width < 800
 
         if is_mobile:
-            self.sidebar.visible = False
             self.top_bar.visible = True
-            self.div1.visible = False
-            self.div2.visible = False
-
-            if self.selected_entry or self.show_settings:
-                # Show Detail Only
-                self.list_container.visible = False
-                self.list_container.expand = False
-                self.detail_view_container.visible = True
-                self.btn_back.visible = True
-            else:
-                # Show List Only
-                self.list_container.visible = True
-                self.list_container.expand = True
-                self.detail_view_container.visible = False
-                self.btn_back.visible = False
-        else:
-            # Desktop Mode
-            self.sidebar.visible = True
-            self.top_bar.visible = False
-            self.div1.visible = True
-            self.div2.visible = True
+            self.list_container.expand = True
+            self.detail_view_container.expand = True
             
-            self.list_container.visible = True
+            if self.selected_entry or self.show_settings:
+                self.btn_back.visible = True
+                self.content = ft.Column([
+                    self.top_bar,
+                    self.detail_view_container
+                ], expand=True)
+            else:
+                self.btn_back.visible = False
+                self.content = ft.Column([
+                    self.top_bar,
+                    self.list_container
+                ], expand=True)
+        else:
+            self.top_bar.visible = False
             self.list_container.expand = False
             self.list_container.width = 300
+            self.detail_view_container.expand = True
             
-            self.detail_view_container.visible = True
+            self.content = ft.Column([
+                ft.Row([
+                    self.sidebar,
+                    ft.VerticalDivider(width=1),
+                    self.list_container,
+                    ft.VerticalDivider(width=1),
+                    self.detail_view_container
+                ], expand=True)
+            ], expand=True)
 
         self.update()
 
@@ -97,21 +99,8 @@ class Dashboard(ft.Container):
         )
 
         self.list_container = ft.Container(content=self.entries_list_view, width=300)
-        self.div1 = ft.VerticalDivider(width=1)
-        self.div2 = ft.VerticalDivider(width=1)
-
-        self.main_content = ft.Row([
-            self.sidebar,
-            self.div1,
-            self.list_container,
-            self.div2,
-            self.detail_view_container
-        ], expand=True)
-
-        self.content = ft.Column([
-            self.top_bar,
-            self.main_content
-        ], expand=True)
+        
+        self.content = ft.Column([], expand=True) # Will be populated by handle_resize
 
         self.update_list_view()
         self.update_detail_view()
