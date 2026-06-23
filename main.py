@@ -97,6 +97,10 @@ if __name__ == "__main__":
         import webbrowser
         import time
         
+        # Monkey-patch to block Flet from opening the unauthenticated root URL
+        original_open = webbrowser.open
+        webbrowser.open = lambda url, new=0, autoraise=True: None
+        
         url = f"http://127.0.0.1:8550/{SESSION_TOKEN}"
         print("="*60)
         print("🔒 LuuPass Vault is running securely in Local Web Mode!")
@@ -105,7 +109,8 @@ if __name__ == "__main__":
         
         def open_browser():
             time.sleep(1.5)
-            webbrowser.open(url)
+            # Use original open to open our secure URL
+            original_open(url)
             
         threading.Thread(target=open_browser, daemon=True).start()
         
