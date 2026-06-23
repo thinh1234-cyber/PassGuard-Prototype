@@ -165,7 +165,7 @@ class Dashboard(ft.Container):
                     selected=(self.selected_entry == entry and not self.show_settings)
                 )
             )
-        if self.page:
+        if getattr(self.entries_list_view, "page", None):
             self.entries_list_view.update()
 
     def select_entry(self, entry):
@@ -390,5 +390,5 @@ class Dashboard(ft.Container):
                 notes_field,
             ], scroll=ft.ScrollMode.AUTO)
 
-        if self.page:
+        if getattr(self.detail_view_container, "page", None):
             self.detail_view_container.update()
