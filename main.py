@@ -42,6 +42,11 @@ def main(page: ft.Page):
                 vault = storage.load(password_input.value)
                 current_password[0] = password_input.value
                 show_dashboard(vault)
+            except ValueError as ve:
+                page.snack_bar = ft.SnackBar(ft.Text(str(ve)), bgcolor=ft.colors.ERROR)
+                page.snack_bar.open = True
+                password_input.value = ""
+                page.update()
             except Exception as ex:
                 import traceback
                 page.controls.clear()
