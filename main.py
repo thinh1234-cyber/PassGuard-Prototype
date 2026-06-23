@@ -103,8 +103,9 @@ if __name__ == "__main__":
         
         url = f"http://127.0.0.1:8550/{SESSION_TOKEN}"
         print("="*60)
-        print("🔒 LuuPass Vault is running securely in Local Web Mode!")
-        print(f"👉 Please open this link to access your vault:\n\n   {url}\n")
+        print("="*60)
+        print("LuuPass Vault is running securely in Local Web Mode!")
+        print(f"Please open this link to access your vault:\n\n   {url}\n")
         print("="*60)
         
         def open_browser():

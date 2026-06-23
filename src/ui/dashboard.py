@@ -361,8 +361,11 @@ class Dashboard(ft.Container):
                         if a is account:
                             entry.accounts.pop(i)
                             break
-                    accounts_col.controls.remove(row_container)
+                    if row_container in accounts_col.controls:
+                        accounts_col.controls.remove(row_container)
                     accounts_col.update()
+                    if self.page:
+                        self.page.update()
                 
                 row_container.content = ft.Column([
                     ft.Row([
@@ -385,6 +388,8 @@ class Dashboard(ft.Container):
                 entry.accounts.append(new_acc)
                 accounts_col.controls.append(build_account_row(new_acc))
                 accounts_col.update()
+                if self.page:
+                    self.page.update()
 
             actions_row = ft.Row([
                 ft.ElevatedButton("Add Another Account", icon=ft.icons.ADD, on_click=add_account),
