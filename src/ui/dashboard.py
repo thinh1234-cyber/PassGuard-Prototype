@@ -73,7 +73,10 @@ class Dashboard(ft.Container):
 
     def update_detail_view(self):
         if not self.selected_entry:
-            self.detail_view_container.content = ft.Center(ft.Text("Select an item to view details", color=ft.colors.ON_SURFACE_VARIANT))
+            self.detail_view_container.content = ft.Container(
+                content=ft.Text("Select an item to view details", color=ft.colors.ON_SURFACE_VARIANT),
+                alignment=ft.alignment.center
+            )
         else:
             entry = self.selected_entry
             title_field = ft.TextField(label="Title", value=entry.title, on_change=lambda e: self.update_field('title', e.control.value))

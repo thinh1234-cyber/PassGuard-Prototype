@@ -30,8 +30,10 @@ def main(page: ft.Page):
                 vault = storage.load(password_input.value)
                 current_password[0] = password_input.value
                 show_dashboard(vault)
-            except Exception:
-                page.snack_bar = ft.SnackBar(ft.Text("Wrong Password!"), bgcolor=ft.colors.ERROR)
+            except Exception as ex:
+                import traceback
+                traceback.print_exc()
+                page.snack_bar = ft.SnackBar(ft.Text(f"Error: {ex}"), bgcolor=ft.colors.ERROR)
                 page.snack_bar.open = True
                 page.update()
 
