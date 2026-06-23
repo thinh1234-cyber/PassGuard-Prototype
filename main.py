@@ -1,8 +1,20 @@
 import flet as ft
 from src.storage import VaultStorage
 from src.ui.dashboard import Dashboard
+import secrets
+import sys
+
+SESSION_TOKEN = secrets.token_urlsafe(16)
 
 def main(page: ft.Page):
+    if "--web" in sys.argv:
+        if page.route != f"/{SESSION_TOKEN}":
+            page.title = "Access Denied"
+            page.controls.clear()
+            page.add(ft.Text("403 Forbidden: Invalid or missing token. Please use the terminal link.", color=ft.colors.ERROR, size=20))
+            page.update()
+            return
+
     page.title = "LuuPass"
     page.theme_mode = ft.ThemeMode.DARK
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
@@ -75,8 +87,23 @@ def main(page: ft.Page):
     show_login()
 
 if __name__ == "__main__":
-    import sys
     if "--web" in sys.argv:
+        import threading
+        import webbrowser
+        import time
+        
+        url = f"http://127.0.0.1:8550/{SESSION_TOKEN}"
+        print("="*60)
+        print("🔒 LuuPass Vault is running securely in Local Web Mode!")
+        print(f"👉 Please open this link to access your vault:\n\n   {url}\n")
+        print("="*60)
+        
+        def open_browser():
+            time.sleep(1.5)
+            webbrowser.open(url)
+            
+        threading.Thread(target=open_browser, daemon=True).start()
+        
         ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=8550, host="127.0.0.1")
     else:
         ft.app(target=main)
