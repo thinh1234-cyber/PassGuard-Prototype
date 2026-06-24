@@ -52,20 +52,32 @@ Backward compatibility:
 - **Backup Rotation:** Save thông thường giữ tối đa 3 backup: `.bak1`, `.bak2`, `.bak3`.
 - **Healing Mode:** Nếu vault chính bị hỏng hoặc bị xóa nhưng backup decrypt/parse thành công với password đang nhập, app có thể khôi phục từ backup.
 - **Safe Import:** File import phải decrypt bằng password của file import và parse thành `Vault` thành công trước khi overwrite vault hiện tại.
-- **Re-encrypt On Import:** Vault import hợp lệ sẽ được save lại bằng format `A2G1`.
-- **Clear Backups On Root Secret Change:** Import vault và change master password xóa backup cũ trước khi ghi file mới, tránh trường hợp backup cũ vẫn mở được bằng password cũ.
+- **Re-encrypt On Import:** Vault import hợp lệ sẽ được save lại bằng format `A2G1` và master password đang unlock.
+- **Recoverable Import:** Import rotate backup vault hiện tại trước khi thay thế, nên user vẫn có đường khôi phục nếu import nhầm.
+- **Safe Master Password Change:** Change password yêu cầu current password + confirm password, ghi payload mới, verify reload thành công, rồi mới xóa backup cũ để tránh backup vẫn mở được bằng password cũ.
 - **Git Hygiene:** `.gitignore` chặn `*.luupass`, `*.luupass.bak*`, và `*.luupass.tmp`; file vault không nên nằm trong Git index.
 
-### 2.4. UI Layer - `main.py` và `src/ui/dashboard.py`
+### 2.4. Version & Update Layer - `src/version.py` và `src/update_checker.py`
+
+- **App Metadata:** `src/version.py` chứa `APP_VERSION`, tên app, app id, GitHub repository metadata, và Git remote URL dùng chung cho build/release/UI.
+- **Opt-in Git Version Check:** `src/update_checker.py` mặc định dùng `git ls-remote --tags --refs https://github.com/thinh1234-cyber/luu_pass.git` để đọc version tag mới nhất, sau đó so sánh với `APP_VERSION`. Nếu remote chưa có version tag, app fallback sang so sánh `remote HEAD` với `local HEAD`.
+- **No Auto-install:** Update checker không `git pull`, không tải/cài đặt, và không chạy code từ Internet. Release asset nếu tải thủ công phải được user kiểm soát.
+- **Release Integrity:** Helper SHA256 hỗ trợ tính hash file local và parse `SHA256SUMS` theo format GNU hoặc BSD để đối chiếu artifact release. Chưa có signature verification.
+
+### 2.5. UI Layer - `main.py` và `src/ui/dashboard.py`
 
 UI dùng **Flet** cho desktop native và local web mode:
 
 - **Local Web Binding:** Khi chạy `--web`, server bind vào `127.0.0.1`, không mở port LAN.
 - **Session Route Token:** App sinh `secrets.token_urlsafe(16)` và yêu cầu URL dạng `http://127.0.0.1:8550/<token>`.
 - **Clipboard Auto-clear:** Copy username/password sẽ tự clear clipboard sau 15 giây.
+- **Idle Auto-lock:** Dashboard tự lock sau thời gian không hoạt động; nếu có edit chưa save thì app save trước khi lock.
 - **Safe Import Dialog:** Khi chọn file import, UI hỏi `Import Vault Password`, sau đó gọi storage validate/import. Nếu password sai hoặc file corrupt, vault hiện tại không bị thay đổi.
 - **Dynamic Export Path:** Dashboard nhận `storage.filepath` từ `main.py`, nên export dùng đúng vault hiện tại thay vì hardcode `vault.luupass`.
 - **Clipboard Timer Reset:** Mỗi lần copy sẽ hủy timer clear clipboard cũ rồi đặt timer 15 giây mới, tránh xóa clipboard sớm khi user copy liên tiếp.
+- **Dirty-state Guard:** Khi rời khỏi entry đang sửa, app hỏi Save/Discard/Cancel để tránh mất thay đổi.
+- **Password Generator:** UI có generator offline cho từng account; kết quả chỉ persist khi user save entry.
+- **Backup Diagnostics:** Settings có nút verify backup để kiểm tra backup decrypt/parse được bằng password session.
 - **State:** Khi unlock, master password và plaintext `Vault` tồn tại trong RAM để cho phép save/edit. Đây là tradeoff UX và là rủi ro nếu máy đang nhiễm malware.
 
 ---

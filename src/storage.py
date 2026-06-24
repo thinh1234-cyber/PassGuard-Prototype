@@ -26,6 +26,9 @@ class VaultStorage:
             if os.path.exists(bak_path):
                 os.remove(bak_path)
 
+    def backup_paths(self):
+        return [f"{self.filepath}.bak{i}" for i in range(1, 4)]
+
     def _atomic_write(self, encrypted_payload: bytes):
         tmp_filepath = self.filepath + ".tmp"
         with open(tmp_filepath, 'wb') as f:
@@ -51,9 +54,31 @@ class VaultStorage:
         # Auto Backup Rotation (Keep last 3 versions for Healing Mode)
         if keep_backups:
             self._rotate_backups()
-        else:
-            self._clear_backups()
         self._atomic_write(encrypted_payload)
+        if not keep_backups:
+            self._clear_backups()
+
+    def change_password(self, vault: Vault, old_password: str, new_password: str):
+        if os.path.exists(self.filepath):
+            self.load(old_password)
+
+        previous_payload = None
+        if os.path.exists(self.filepath):
+            with open(self.filepath, "rb") as f:
+                previous_payload = f.read()
+
+        data = vault.model_dump_json().encode("utf-8")
+        encrypted_payload = self.crypto.encrypt(data, new_password)
+
+        self._atomic_write(encrypted_payload)
+        try:
+            self.load(new_password)
+        except Exception:
+            if previous_payload is not None:
+                self._atomic_write(previous_payload)
+            raise
+
+        self._clear_backups()
 
     def validate_import_file(self, import_path: str, password: str) -> Vault:
         if not os.path.exists(import_path):
@@ -87,7 +112,7 @@ class VaultStorage:
         return imported_vault
 
     def load(self, password: str) -> Vault:
-        backup_paths = [f"{self.filepath}.bak{i}" for i in range(1, 4)]
+        backup_paths = self.backup_paths()
         has_backup = any(os.path.exists(path) for path in backup_paths)
 
         if not os.path.exists(self.filepath) and not has_backup:
@@ -109,3 +134,33 @@ class VaultStorage:
             
             # If all fail, it's 99% a wrong password, or catastrophic corruption
             raise ValueError("Sai mật khẩu hoặc toàn bộ dữ liệu đã bị hỏng!") from main_e
+
+    def verify_backups(self, password: str) -> list[dict]:
+        results = []
+        for path in self.backup_paths():
+            if not os.path.exists(path):
+                results.append({"path": path, "exists": False, "valid": False, "error": None})
+                continue
+
+            try:
+                vault = self._load_from_file(path, password, allow_empty=False)
+                results.append(
+                    {
+                        "path": path,
+                        "exists": True,
+                        "valid": True,
+                        "entries": len(vault.entries),
+                        "error": None,
+                    }
+                )
+            except Exception as ex:
+                results.append(
+                    {
+                        "path": path,
+                        "exists": True,
+                        "valid": False,
+                        "entries": None,
+                        "error": str(ex),
+                    }
+                )
+        return results

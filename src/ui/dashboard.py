@@ -4,10 +4,14 @@ import os
 import platform
 import shutil
 import threading
+import asyncio
 
 import flet as ft
 
 from src.models import Account, Entry, Vault
+from src.passwords import generate_password
+from src.update_checker import check_for_update, github_releases_url
+from src.version import APP_VERSION
 
 
 COLORS = getattr(ft, "Colors", None) or getattr(ft, "colors")
@@ -122,6 +126,10 @@ def file_type_custom():
     return picker_type.CUSTOM if picker_type else None
 
 
+def icon_or(name, fallback):
+    return getattr(ICONS, name, fallback)
+
+
 def default_export_dir():
     candidates = [
         os.environ.get("LUUPASS_EXPORT_DIR"),
@@ -139,7 +147,17 @@ def default_export_dir():
 
 
 class Dashboard(ft.Container):
-    def __init__(self, vault: Vault, vault_filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload=None):
+    def __init__(
+        self,
+        vault: Vault,
+        vault_filepath,
+        on_save,
+        on_lock,
+        on_change_password,
+        on_import_vault,
+        on_import_vault_payload=None,
+        on_verify_backups=None,
+    ):
         super().__init__(expand=True, bgcolor=BG)
         self.vault = vault
         self.vault_filepath = vault_filepath
@@ -148,8 +166,11 @@ class Dashboard(ft.Container):
         self.on_change_password = on_change_password
         self.on_import_vault = on_import_vault
         self.on_import_vault_payload = on_import_vault_payload
+        self.on_verify_backups = on_verify_backups
 
         self.selected_entry = None
+        self.selected_entry_snapshot = None
+        self.selected_entry_is_new = False
         self.show_settings = False
         self.search_query = ""
         self.pending_import_path = None
@@ -157,8 +178,14 @@ class Dashboard(ft.Container):
         self.export_dir = default_export_dir()
         self.export_path_field = None
         self.clipboard_clear_timer = None
+        self.idle_lock_timer = None
+        self.search_timer = None
         self.is_mobile = False
         self.ui_theme = "dark"
+        self.is_dirty = False
+        self.is_busy = False
+        self.busy_message = ""
+        self.idle_lock_seconds = int(os.environ.get("LUUPASS_IDLE_LOCK_SECONDS", "300"))
 
         self.export_picker = self.create_file_picker(self.export_result)
         self.export_folder_picker = self.create_file_picker(self.export_folder_result)
@@ -167,11 +194,25 @@ class Dashboard(ft.Container):
         self.content = ft.Container(expand=True, bgcolor=BG)
 
     def did_mount(self):
+        page = self.get_page()
+        if not page:
+            return
         if self.uses_legacy_file_picker():
-            self.page.overlay.extend([self.export_picker, self.export_folder_picker, self.import_picker])
-        self.page.on_resize = self.handle_resize
-        self.page.bgcolor = BG
+            page.overlay.extend([self.export_picker, self.export_folder_picker, self.import_picker])
+        page.on_resize = self.handle_resize
+        page.bgcolor = BG
+        self.reset_idle_lock_timer()
         self.handle_resize()
+
+    def will_unmount(self):
+        self.clear_clipboard_now()
+        self.cancel_timers()
+
+    def get_page(self):
+        try:
+            return self.page
+        except RuntimeError:
+            return None
 
     def create_file_picker(self, handler):
         picker = ft.FilePicker()
@@ -190,49 +231,223 @@ class Dashboard(ft.Container):
         return not inspect.iscoroutinefunction(self.import_picker.pick_files)
 
     def show_snack(self, message, bgcolor=None):
+        page = self.get_page()
+        if not page:
+            return
         snack_bar = ft.SnackBar(ft.Text(message), bgcolor=bgcolor)
-        if hasattr(self.page, "show_snack_bar"):
-            self.page.show_snack_bar(snack_bar)
-        elif hasattr(self.page, "open"):
-            self.page.open(snack_bar)
-        elif hasattr(self.page, "show_dialog"):
-            self.page.show_dialog(snack_bar)
+        if hasattr(page, "show_snack_bar"):
+            page.show_snack_bar(snack_bar)
+        elif hasattr(page, "open"):
+            page.open(snack_bar)
+        elif hasattr(page, "show_dialog"):
+            page.show_dialog(snack_bar)
         else:
-            self.page.snack_bar = snack_bar
+            page.snack_bar = snack_bar
             snack_bar.open = True
-            self.page.update()
+            page.update()
 
     def show_dialog(self, dialog):
-        if hasattr(self.page, "show_dialog"):
-            self.page.show_dialog(dialog)
-        elif hasattr(self.page, "open"):
-            self.page.open(dialog)
+        page = self.get_page()
+        if not page:
+            return
+        if hasattr(page, "show_dialog"):
+            page.show_dialog(dialog)
+        elif hasattr(page, "open"):
+            page.open(dialog)
         else:
-            self.page.dialog = dialog
+            page.dialog = dialog
             dialog.open = True
-            self.page.update()
+            page.update()
 
     def close_dialog(self, dialog):
-        if hasattr(self.page, "close_dialog"):
-            self.page.close_dialog()
-        elif hasattr(self.page, "pop_dialog"):
-            self.page.pop_dialog()
-        elif hasattr(self.page, "close"):
-            self.page.close(dialog)
+        page = self.get_page()
+        if not page:
+            return
+        if hasattr(page, "close_dialog"):
+            page.close_dialog()
+        elif hasattr(page, "pop_dialog"):
+            page.pop_dialog()
+        elif hasattr(page, "close"):
+            page.close(dialog)
         else:
             dialog.open = False
-            self.page.update()
+            page.update()
+
+    def cancel_timers(self):
+        for timer_name in ("clipboard_clear_timer", "idle_lock_timer", "search_timer"):
+            timer = getattr(self, timer_name, None)
+            if timer:
+                timer.cancel()
+                setattr(self, timer_name, None)
+
+    async def idle_lock_if_current(self, timer):
+        if self.idle_lock_timer is not timer:
+            return
+
+        if self.is_dirty:
+            self.save_dirty_changes(show_message=False)
+        self.show_snack("Vault auto-locked after inactivity.", bgcolor=SUCCESS)
+        self.lock_now()
+
+    def reset_idle_lock_timer(self):
+        if self.idle_lock_timer:
+            self.idle_lock_timer.cancel()
+
+        if self.idle_lock_seconds <= 0:
+            self.idle_lock_timer = None
+            return
+
+        def auto_lock():
+            page = self.get_page()
+            if not page or self.idle_lock_timer is not timer:
+                return
+            if hasattr(page, "run_task"):
+                page.run_task(self.idle_lock_if_current, timer)
+            else:
+                self.lock_now()
+
+        timer = threading.Timer(float(self.idle_lock_seconds), auto_lock)
+        timer.daemon = True
+        self.idle_lock_timer = timer
+        timer.start()
+
+    def record_activity(self):
+        self.reset_idle_lock_timer()
+
+    def with_busy_overlay(self, control):
+        if not self.is_busy:
+            return control
+
+        return ft.Stack(
+            [
+                control,
+                ft.Container(
+                    expand=True,
+                    bgcolor="#99000000",
+                    alignment=alignment_center(),
+                    content=ft.Container(
+                        padding=20,
+                        border_radius=14,
+                        bgcolor=SURFACE,
+                        border=border_all(1, BORDER),
+                        content=ft.Column(
+                            [
+                                ft.ProgressRing(width=28, height=28, color=PRIMARY),
+                                ft.Text(self.busy_message or "Working...", color=TEXT, size=14),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            tight=True,
+                            spacing=12,
+                        ),
+                    ),
+                ),
+            ],
+            expand=True,
+        )
+
+    def set_busy(self, message=None):
+        self.is_busy = message is not None
+        self.busy_message = message or ""
+        if self.get_page():
+            self.handle_resize()
 
     def handle_resize(self, e=None):
-        if not self.page:
+        page = self.get_page()
+        if not page:
             return
-        self.is_mobile = self.page.width < 820
-        self.content = self.build_mobile_shell() if self.is_mobile else self.build_desktop_shell()
+        self.is_mobile = page.width < 820
+        shell = self.build_mobile_shell() if self.is_mobile else self.build_desktop_shell()
+        self.content = self.with_busy_overlay(shell)
         self.update()
 
     def refresh(self):
-        if self.page:
+        if self.get_page():
             self.handle_resize()
+
+    def capture_entry_snapshot(self, entry, is_new=False):
+        self.selected_entry = entry
+        self.selected_entry_is_new = is_new
+        self.selected_entry_snapshot = None if is_new or entry is None else entry.model_dump_json()
+
+    def mark_dirty(self):
+        self.is_dirty = True
+        self.record_activity()
+
+    def revert_dirty_entry(self):
+        if not self.is_dirty or not self.selected_entry:
+            self.is_dirty = False
+            return
+
+        if self.selected_entry_is_new:
+            if self.selected_entry in self.vault.entries:
+                self.vault.entries.remove(self.selected_entry)
+            self.selected_entry = None
+        elif self.selected_entry_snapshot:
+            restored = Entry.model_validate_json(self.selected_entry_snapshot)
+            self.selected_entry.id = restored.id
+            self.selected_entry.title = restored.title
+            self.selected_entry.url = restored.url
+            self.selected_entry.notes = restored.notes
+            self.selected_entry.accounts = restored.accounts
+
+        self.is_dirty = False
+        self.selected_entry_snapshot = None
+        self.selected_entry_is_new = False
+
+    def save_dirty_changes(self, show_message=True):
+        if not self.is_dirty:
+            return
+
+        self.on_save(self.vault)
+        self.is_dirty = False
+        self.selected_entry_snapshot = self.selected_entry.model_dump_json() if self.selected_entry else None
+        self.selected_entry_is_new = False
+        if show_message:
+            self.show_snack("Changes saved.", bgcolor=SUCCESS)
+
+    def guard_dirty(self, action, title="Unsaved Changes"):
+        if not self.is_dirty:
+            action()
+            return
+
+        def save_and_continue(e=None):
+            self.save_dirty_changes(show_message=False)
+            self.close_dialog(dialog)
+            action()
+
+        def discard_and_continue(e=None):
+            self.revert_dirty_entry()
+            self.close_dialog(dialog)
+            action()
+
+        def cancel(e=None):
+            self.close_dialog(dialog)
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(title),
+            content=ft.Text("Save changes before leaving this item?"),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel),
+                ft.TextButton("Discard", on_click=discard_and_continue),
+                flet_button("Save", icon=ICONS.SAVE, on_click=save_and_continue),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.show_dialog(dialog)
+
+    def lock_now(self):
+        self.clear_clipboard_now()
+        self.cancel_timers()
+        self.on_lock()
+
+    def request_lock(self, e=None):
+        self.record_activity()
+
+        def lock_after_save():
+            self.lock_now()
+
+        self.guard_dirty(lock_after_save, title="Lock Vault")
 
     def filtered_entries(self):
         query = self.search_query.strip().lower()
@@ -262,7 +477,7 @@ class Dashboard(ft.Container):
 
     def text_button(self, label, icon, on_click, selected=False):
         return ft.Container(
-            height=44,
+            height=48,
             border_radius=10,
             bgcolor=PRIMARY_CONTAINER if selected else None,
             padding=padding_symmetric(horizontal=12, vertical=8),
@@ -283,6 +498,8 @@ class Dashboard(ft.Container):
             on_click=on_click,
             icon_color=ON_PRIMARY if selected else MUTED,
             bgcolor=PRIMARY_CONTAINER if selected else SURFACE_HIGH,
+            width=48,
+            height=48,
         )
 
     def search_field(self):
@@ -354,7 +571,7 @@ class Dashboard(ft.Container):
                     self.text_button("Add Platform", ICONS.ADD, self.add_new_entry),
                     ft.Container(expand=True),
                     self.text_button("Settings", ICONS.SETTINGS, self.open_settings, selected=self.show_settings),
-                    self.text_button("Lock Vault", ICONS.LOCK, lambda e: self.on_lock()),
+                    self.text_button("Lock Vault", ICONS.LOCK, self.request_lock),
                 ],
                 expand=True,
                 spacing=8,
@@ -433,7 +650,7 @@ class Dashboard(ft.Container):
                     header,
                     ft.Container(
                         expand=True,
-                        content=ft.ListView(list_controls, spacing=8, padding=padding_only(top=6), expand=True),
+                        content=ft.ListView(list_controls, spacing=8, item_extent=84, cache_extent=420, padding=padding_only(top=6), expand=True),
                     ),
                 ],
                 expand=True,
@@ -466,7 +683,7 @@ class Dashboard(ft.Container):
                             [
                                 ft.IconButton(icon=ICONS.ARROW_BACK, icon_color=MUTED, on_click=self.go_back),
                                 ft.Text(title, color=TEXT, size=18, weight=ft.FontWeight.W_600, expand=True, overflow=ft.TextOverflow.ELLIPSIS),
-                                ft.IconButton(icon=ICONS.LOCK, icon_color=MUTED, tooltip="Lock Vault", on_click=lambda e: self.on_lock()),
+                                ft.IconButton(icon=ICONS.LOCK, icon_color=MUTED, tooltip="Lock Vault", on_click=self.request_lock, width=48, height=48),
                             ],
                         ),
                     ),
@@ -484,8 +701,8 @@ class Dashboard(ft.Container):
                     content=ft.Row(
                         [
                             ft.Text("LuuPass", color=PRIMARY, size=22, weight=ft.FontWeight.BOLD, expand=True),
-                            ft.IconButton(icon=ICONS.ADD, icon_color=TEXT, bgcolor=SURFACE_HIGH, on_click=self.add_new_entry),
-                            ft.IconButton(icon=ICONS.LOCK, icon_color=MUTED, tooltip="Lock Vault", on_click=lambda e: self.on_lock()),
+                            ft.IconButton(icon=ICONS.ADD, icon_color=TEXT, bgcolor=SURFACE_HIGH, on_click=self.add_new_entry, width=48, height=48),
+                            ft.IconButton(icon=ICONS.LOCK, icon_color=MUTED, tooltip="Lock Vault", on_click=self.request_lock, width=48, height=48),
                         ],
                     ),
                 ),
@@ -524,9 +741,9 @@ class Dashboard(ft.Container):
                     border=border_only(top=ft.BorderSide(1, BORDER)),
                     content=ft.Row(
                         [
-                            ft.IconButton(icon=ICONS.LIST, icon_color=PRIMARY, tooltip="Vault", on_click=lambda e: self.select_entry(None)),
+                            ft.IconButton(icon=ICONS.LIST, icon_color=PRIMARY, tooltip="Vault", on_click=lambda e: self.select_entry(None), width=56, height=48),
                             ft.Container(expand=True),
-                            ft.IconButton(icon=ICONS.SETTINGS, icon_color=MUTED, tooltip="Settings", on_click=self.open_settings),
+                            ft.IconButton(icon=ICONS.SETTINGS, icon_color=MUTED, tooltip="Settings", on_click=self.open_settings, width=56, height=48),
                         ],
                     ),
                 ),
@@ -582,6 +799,13 @@ class Dashboard(ft.Container):
             ],
             spacing=14,
         )
+        dirty_indicator = ft.Container(
+            padding=padding_symmetric(horizontal=10, vertical=6),
+            border_radius=999,
+            bgcolor=WARNING_BG,
+            border=border_all(1, WARNING_BORDER),
+            content=ft.Text("Unsaved changes", color=ERROR, size=12, weight=ft.FontWeight.W_600),
+        ) if self.is_dirty else ft.Container()
 
         return ft.Container(
             expand=True,
@@ -592,6 +816,7 @@ class Dashboard(ft.Container):
             content=ft.Column(
                 [
                     header,
+                    dirty_indicator,
                     ft.Divider(color=BORDER),
                     ft.Column([title_field, url_field], spacing=12) if self.is_mobile else ft.Row([title_field, url_field], spacing=12),
                     ft.Container(height=4),
@@ -624,8 +849,36 @@ class Dashboard(ft.Container):
             expand=True,
         )
 
-        username_row = ft.Row([username_field, ft.IconButton(icon=ICONS.COPY, icon_color=PRIMARY, tooltip="Copy Username", on_click=lambda e: self.copy_to_clipboard(username_field.value))], spacing=8)
-        password_row = ft.Row([password_field, ft.IconButton(icon=ICONS.COPY, icon_color=PRIMARY, tooltip="Copy Password", on_click=lambda e: self.copy_to_clipboard(password_field.value))], spacing=8)
+        async def copy_username(e):
+            await self.copy_to_clipboard(username_field.value)
+
+        async def copy_password(e):
+            await self.copy_to_clipboard(password_field.value)
+
+        def generate_for_account(e):
+            password = generate_password()
+            account.password = password
+            password_field.value = password
+            self.mark_dirty()
+            if getattr(password_field, "page", None):
+                password_field.update()
+            self.show_snack("Password generated. Save changes to persist it.", bgcolor=SUCCESS)
+
+        username_row = ft.Row(
+            [
+                username_field,
+                ft.IconButton(icon=ICONS.COPY, icon_color=PRIMARY, tooltip="Copy Username", on_click=copy_username, width=48, height=48),
+            ],
+            spacing=8,
+        )
+        password_row = ft.Row(
+            [
+                password_field,
+                ft.IconButton(icon=ICONS.PASSWORD, icon_color=PRIMARY, tooltip="Generate Password", on_click=generate_for_account, width=48, height=48),
+                ft.IconButton(icon=ICONS.COPY, icon_color=PRIMARY, tooltip="Copy Password", on_click=copy_password, width=48, height=48),
+            ],
+            spacing=8,
+        )
 
         return ft.Container(
             padding=16,
@@ -638,7 +891,7 @@ class Dashboard(ft.Container):
                         [
                             ft.Row([ft.Icon(ICONS.PERSON, color=PRIMARY, size=18), ft.Text(f"Account {index + 1}", color=TEXT, weight=ft.FontWeight.W_600)], spacing=8),
                             ft.Container(expand=True),
-                            ft.IconButton(icon=ICONS.REMOVE_CIRCLE, icon_color=ERROR, tooltip="Remove Account", on_click=lambda e: self.remove_account(entry, account)),
+                            ft.IconButton(icon=ICONS.REMOVE_CIRCLE, icon_color=ERROR, tooltip="Remove Account", on_click=lambda e: self.remove_account(entry, account), width=48, height=48),
                         ],
                     ),
                     username_row,
@@ -659,18 +912,40 @@ class Dashboard(ft.Container):
             on_click=self.choose_export_folder,
         )
         export_to_folder_btn = flet_button("Export to Folder", icon=ICONS.DOWNLOAD, on_click=self.export_to_path)
-        save_as_label = "Download Vault" if self.page and getattr(self.page, "web", False) else "Save As..."
+        page = self.get_page()
+        save_as_label = "Download Vault" if page and getattr(page, "web", False) else "Save As..."
         save_as_btn = flet_button(save_as_label, icon=ICONS.SAVE, on_click=self.save_as_export)
         import_btn = flet_button("Import Vault", icon=ICONS.UPLOAD, on_click=self.pick_import_vault)
-        change_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
+        verify_backups_btn = flet_button("Verify Backups", icon=ICONS.CHECK_CIRCLE, on_click=self.run_backup_diagnostics)
+        check_updates_btn = flet_button("Check Updates", icon=icon_or("UPDATE", icon_or("REFRESH", ICONS.SETTINGS)), on_click=self.check_updates)
+        current_pass_field = ft.TextField(label="Current Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
+        new_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
+        confirm_pass_field = ft.TextField(label="Confirm New Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
 
         def change_pass_clicked(e):
-            if change_pass_field.value:
-                self.on_change_password(change_pass_field.value)
-                change_pass_field.value = ""
-                if getattr(change_pass_field, "page", None):
-                    change_pass_field.update()
+            self.record_activity()
+            if not current_pass_field.value or not new_pass_field.value or not confirm_pass_field.value:
+                self.show_snack("Please fill all password fields.", bgcolor=ERROR)
+                return
+            if new_pass_field.value != confirm_pass_field.value:
+                self.show_snack("New password confirmation does not match.", bgcolor=ERROR)
+                return
+            if len(new_pass_field.value) < 8:
+                self.show_snack("New password must be at least 8 characters.", bgcolor=ERROR)
+                return
+
+            try:
+                self.on_change_password(current_pass_field.value, new_pass_field.value, self.vault)
+                self.is_dirty = False
+                self.selected_entry_snapshot = self.selected_entry.model_dump_json() if self.selected_entry else None
+                self.selected_entry_is_new = False
+                for field in (current_pass_field, new_pass_field, confirm_pass_field):
+                    field.value = ""
+                    if getattr(field, "page", None):
+                        field.update()
                 self.show_snack("Password Changed Successfully!", bgcolor=SUCCESS)
+            except Exception as ex:
+                self.show_snack(f"Password change failed: {ex}", bgcolor=ERROR)
 
         return ft.Container(
             expand=True,
@@ -689,10 +964,20 @@ class Dashboard(ft.Container):
                     ),
                     ft.Divider(color=BORDER),
                     self.section_title("Appearance"),
-                    flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme),
+                    ft.Text(f"LuuPass v{APP_VERSION}", color=MUTED, size=13),
+                    ft.Column([flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme), check_updates_btn], spacing=8)
+                    if self.is_mobile else ft.Row([flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme), check_updates_btn], spacing=8),
                     ft.Container(height=4),
                     self.section_title("Change Master Password"),
-                    ft.Column([change_pass_field, flet_button("Change Password", icon=ICONS.PASSWORD, on_click=change_pass_clicked)], spacing=10) if self.is_mobile else ft.Row([change_pass_field, flet_button("Change Password", icon=ICONS.PASSWORD, on_click=change_pass_clicked)], spacing=10),
+                    ft.Column(
+                        [
+                            current_pass_field,
+                            new_pass_field,
+                            confirm_pass_field,
+                            flet_button("Change Password", icon=ICONS.PASSWORD, on_click=change_pass_clicked),
+                        ],
+                        spacing=10,
+                    ),
                     ft.Container(height=4),
                     self.section_title("Data Management"),
                     ft.Text("Import replaces the local vault only after decrypt/parse validation succeeds.", color=MUTED, size=13),
@@ -704,6 +989,9 @@ class Dashboard(ft.Container):
                         ],
                         spacing=10,
                     ),
+                    self.section_title("Vault Diagnostics"),
+                    ft.Text(self.vault_summary_text(), color=MUTED, size=13, selectable=True),
+                    verify_backups_btn,
                     ft.Container(
                         padding=12,
                         border_radius=12,
@@ -723,6 +1011,94 @@ class Dashboard(ft.Container):
                 spacing=12,
             ),
         )
+
+    def vault_summary_text(self):
+        backup_count = sum(1 for i in range(1, 4) if os.path.exists(f"{self.vault_filepath}.bak{i}"))
+        vault_exists = os.path.exists(self.vault_filepath)
+        try:
+            size = os.path.getsize(self.vault_filepath) if vault_exists else 0
+        except OSError:
+            size = 0
+        return f"Vault: {self.vault_filepath}\nEntries: {len(self.vault.entries)}\nBackups: {backup_count}/3\nSize: {size} bytes"
+
+    def run_backup_diagnostics(self, e=None):
+        self.record_activity()
+        if not self.on_verify_backups:
+            self.show_snack("Backup verifier is not configured.", bgcolor=ERROR)
+            return
+
+        try:
+            results = self.on_verify_backups()
+        except Exception as ex:
+            self.show_snack(f"Backup verification failed: {ex}", bgcolor=ERROR)
+            return
+
+        lines = []
+        for result in results:
+            name = os.path.basename(result["path"])
+            if not result["exists"]:
+                lines.append(f"{name}: missing")
+            elif result["valid"]:
+                lines.append(f"{name}: OK ({result.get('entries', 0)} entries)")
+            else:
+                lines.append(f"{name}: INVALID")
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Backup Diagnostics"),
+            content=ft.Text("\n".join(lines) or "No backup slots found.", selectable=True),
+            actions=[ft.TextButton("Close", on_click=lambda e: self.close_dialog(dialog))],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.show_dialog(dialog)
+
+    async def check_updates(self, e=None):
+        self.record_activity()
+        self.set_busy("Checking for updates...")
+        try:
+            result = await asyncio.to_thread(check_for_update)
+        except Exception as ex:
+            self.show_snack(f"Update check failed: {ex}", bgcolor=ERROR)
+            return
+        finally:
+            self.set_busy(None)
+
+        release = result.latest_release
+        if result.source == "git-head":
+            if result.update_available:
+                message = (
+                    "Remote repository has newer code.\n"
+                    f"Local HEAD: {result.local_commit[:12] if result.local_commit else 'unknown'}\n"
+                    f"Remote HEAD: {result.remote_commit[:12] if result.remote_commit else 'unknown'}"
+                )
+            else:
+                message = (
+                    "No newer remote commit detected.\n"
+                    f"Current version: {APP_VERSION}\n"
+                    f"Remote HEAD: {result.remote_commit[:12] if result.remote_commit else 'unknown'}"
+                )
+        elif result.update_available:
+            message = f"Update available: {release.version.normalized}\n{release.html_url}"
+        else:
+            message = f"LuuPass is up to date.\nCurrent: {APP_VERSION}\nLatest: {release.version.normalized}"
+
+        def open_releases(e=None):
+            page = self.get_page()
+            if page and hasattr(page, "launch_url"):
+                page.launch_url(release.html_url or github_releases_url())
+            self.close_dialog(dialog)
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Update Check"),
+            content=ft.Text(message, selectable=True),
+            actions=[
+                ft.TextButton("Close", on_click=lambda e: self.close_dialog(dialog)),
+                flet_button("Open Remote", icon=icon_or("OPEN_IN_NEW", icon_or("LINK", ICONS.SETTINGS)), on_click=open_releases),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        self.show_dialog(dialog)
 
     def styled_text_field(self, label, value, on_change, expand=False, multiline=False, min_lines=None, password=False, can_reveal_password=False):
         return ft.TextField(
@@ -746,13 +1122,36 @@ class Dashboard(ft.Container):
 
     def on_search_change(self, e):
         self.search_query = e.control.value
-        self.refresh()
+        self.record_activity()
+        if self.search_timer:
+            self.search_timer.cancel()
+
+        def refresh_search():
+            page = self.get_page()
+            if not page or self.search_timer is not timer:
+                return
+            if hasattr(page, "run_task"):
+                page.run_task(self.refresh_after_search, timer)
+            else:
+                self.refresh()
+
+        timer = threading.Timer(0.2, refresh_search)
+        timer.daemon = True
+        self.search_timer = timer
+        timer.start()
+
+    async def refresh_after_search(self, timer):
+        if self.search_timer is timer:
+            self.search_timer = None
+            self.refresh()
 
     def on_export_dir_change(self, e):
         self.export_dir = e.control.value
+        self.record_activity()
 
     async def choose_export_folder(self, e):
-        if getattr(self.page, "web", False):
+        page = self.get_page()
+        if page and getattr(page, "web", False):
             self.show_web_filepicker_notice()
             if self.export_path_field and getattr(self.export_path_field, "page", None):
                 self.export_path_field.focus()
@@ -777,7 +1176,8 @@ class Dashboard(ft.Container):
         if picker_type:
             kwargs["file_type"] = picker_type
 
-        if getattr(self.page, "web", False):
+        page = self.get_page()
+        if page and getattr(page, "web", False):
             try:
                 with open(self.vault_filepath, "rb") as f:
                     kwargs["src_bytes"] = f.read()
@@ -795,12 +1195,21 @@ class Dashboard(ft.Container):
             kwargs.pop("file_type", None)
             result = await self.maybe_await(picker.save_file(**kwargs))
 
-        if getattr(self.page, "web", False):
+        if page and getattr(page, "web", False):
             self.show_snack("Vault download started.", bgcolor=SUCCESS)
         elif result is not None:
             self.export_result(result)
 
     async def pick_import_vault(self, e):
+        if self.is_dirty:
+            def continue_import():
+                page = self.get_page()
+                if page and hasattr(page, "run_task"):
+                    page.run_task(self.pick_import_vault, e)
+
+            self.guard_dirty(continue_import, title="Import Vault")
+            return
+
         picker_type = file_type_custom()
         kwargs = {
             "allowed_extensions": ["luupass"],
@@ -809,7 +1218,8 @@ class Dashboard(ft.Container):
         if picker_type:
             kwargs["file_type"] = picker_type
 
-        if getattr(self.page, "web", False):
+        page = self.get_page()
+        if page and getattr(page, "web", False):
             kwargs["with_data"] = True
 
         picker = self.import_picker if self.uses_legacy_file_picker() else ft.FilePicker()
@@ -894,7 +1304,8 @@ class Dashboard(ft.Container):
                 self.close_dialog(dialog)
                 if imported_vault is not None:
                     self.vault = imported_vault
-                self.selected_entry = None
+                self.capture_entry_snapshot(None)
+                self.is_dirty = False
                 self.show_settings = False
                 self.refresh()
                 self.show_snack("Vault imported successfully.", bgcolor=SUCCESS)
@@ -914,75 +1325,186 @@ class Dashboard(ft.Container):
         password_field.focus()
 
     def select_entry(self, entry):
-        self.show_settings = False
-        self.selected_entry = entry
-        self.refresh()
+        self.record_activity()
+
+        def do_select():
+            self.show_settings = False
+            self.capture_entry_snapshot(entry)
+            self.refresh()
+
+        self.guard_dirty(do_select)
 
     def open_settings(self, e):
-        self.show_settings = True
-        self.selected_entry = None
-        self.refresh()
+        self.record_activity()
+
+        def do_open_settings():
+            self.show_settings = True
+            self.capture_entry_snapshot(None)
+            self.refresh()
+
+        self.guard_dirty(do_open_settings)
 
     def go_back(self, e):
-        self.show_settings = False
-        self.selected_entry = None
-        self.refresh()
+        self.record_activity()
+
+        def do_back():
+            self.show_settings = False
+            self.capture_entry_snapshot(None)
+            self.refresh()
+
+        self.guard_dirty(do_back)
 
     def add_new_entry(self, e):
-        new_entry = Entry(title="New Platform", accounts=[Account(username="", password="")])
-        self.vault.entries.append(new_entry)
-        self.show_settings = False
-        self.selected_entry = new_entry
-        self.refresh()
+        self.record_activity()
+
+        def do_add():
+            new_entry = Entry(title="New Platform", accounts=[Account(username="", password="")])
+            self.vault.entries.append(new_entry)
+            self.show_settings = False
+            self.capture_entry_snapshot(new_entry, is_new=True)
+            self.is_dirty = True
+            self.refresh()
+
+        self.guard_dirty(do_add)
 
     def delete_entry(self, entry):
+        self.record_activity()
         self.vault.entries.remove(entry)
-        self.selected_entry = None
+        self.capture_entry_snapshot(None)
+        self.is_dirty = False
         self.on_save(self.vault)
         self.refresh()
 
     def add_account(self, entry):
+        self.record_activity()
         entry.accounts.append(Account(username="", password=""))
+        self.mark_dirty()
         self.refresh()
 
     def remove_account(self, entry, account):
+        self.record_activity()
         if account in entry.accounts:
             entry.accounts.remove(account)
+            self.mark_dirty()
             self.refresh()
 
     def update_entry_field(self, entry, field, value):
+        self.record_activity()
         setattr(entry, field, value)
+        self.mark_dirty()
 
     def update_account_field(self, account, field, value):
+        self.record_activity()
         setattr(account, field, value)
+        self.mark_dirty()
 
     def save_current_entry(self, e):
-        self.on_save(self.vault)
+        self.record_activity()
+        self.save_dirty_changes(show_message=False)
         self.refresh()
         self.show_snack("Platform Saved Successfully!", bgcolor=SUCCESS)
 
-    def copy_to_clipboard(self, val):
-        self.page.set_clipboard(val)
-        self.show_snack("Copied to clipboard! (Auto-clears in 15s)")
+    async def set_clipboard_text(self, val):
+        text = "" if val is None else str(val)
+        errors = []
 
+        clipboard_service = getattr(ft, "Clipboard", None)
+        if clipboard_service:
+            try:
+                await self.maybe_await(clipboard_service().set(text))
+                return
+            except Exception as ex:
+                errors.append(ex)
+
+        page = self.get_page()
+        if page and hasattr(page, "set_clipboard"):
+            try:
+                await self.maybe_await(page.set_clipboard(text))
+                return
+            except Exception as ex:
+                errors.append(ex)
+
+        if page and hasattr(page, "set_clipboard_async"):
+            try:
+                await self.maybe_await(page.set_clipboard_async(text))
+                return
+            except Exception as ex:
+                errors.append(ex)
+
+        if errors:
+            raise errors[-1]
+        raise RuntimeError("Clipboard API is not available.")
+
+    async def clear_clipboard_if_current(self, timer):
+        if self.clipboard_clear_timer is not timer:
+            return
+
+        try:
+            await self.set_clipboard_text("")
+        except Exception:
+            pass
+        finally:
+            if self.clipboard_clear_timer is timer:
+                self.clipboard_clear_timer = None
+
+    def clear_clipboard_now(self):
+        page = self.get_page()
+        if not page:
+            return
+        if hasattr(page, "run_task"):
+            try:
+                page.run_task(self.set_clipboard_text, "")
+                return
+            except Exception:
+                pass
+        if hasattr(page, "set_clipboard"):
+            try:
+                page.set_clipboard("")
+            except Exception:
+                pass
+
+    def schedule_clipboard_clear(self):
         if self.clipboard_clear_timer:
             self.clipboard_clear_timer.cancel()
 
         def clear_clipboard():
-            if self.page and self.clipboard_clear_timer is timer:
-                self.page.set_clipboard("")
-                self.clipboard_clear_timer = None
+            page = self.get_page()
+            if not page or self.clipboard_clear_timer is not timer:
+                return
+            if hasattr(page, "run_task"):
+                page.run_task(self.clear_clipboard_if_current, timer)
+                return
+            try:
+                page.set_clipboard("")
+            finally:
+                if self.clipboard_clear_timer is timer:
+                    self.clipboard_clear_timer = None
 
         timer = threading.Timer(15.0, clear_clipboard)
         timer.daemon = True
         self.clipboard_clear_timer = timer
         timer.start()
 
+    async def copy_to_clipboard(self, val):
+        try:
+            await self.set_clipboard_text(val)
+        except Exception:
+            self.show_snack("Clipboard access was blocked by the browser.", bgcolor=ERROR)
+            return
+
+        message = "Copied to clipboard! (Auto-clears in 15s)"
+        page = self.get_page()
+        if page and getattr(page, "web", False):
+            message = "Copied to clipboard! (Auto-clear is best-effort in browser mode)"
+        self.show_snack(message)
+        self.schedule_clipboard_clear()
+
     def toggle_theme(self, e):
         self.ui_theme = "light" if self.ui_theme == "dark" else "dark"
         apply_palette(self.ui_theme)
         self.bgcolor = BG
-        if self.page:
-            self.page.bgcolor = BG
-            self.page.theme_mode = ft.ThemeMode.LIGHT if self.ui_theme == "light" else ft.ThemeMode.DARK
+        page = self.get_page()
+        if page:
+            page.bgcolor = BG
+            page.theme_mode = ft.ThemeMode.LIGHT if self.ui_theme == "light" else ft.ThemeMode.DARK
         self.refresh()

@@ -22,10 +22,12 @@ def flet_button(content, **kwargs):
 
 def show_snack(page, message, bgcolor=None):
     snack_bar = ft.SnackBar(ft.Text(message), bgcolor=bgcolor)
-    if hasattr(page, "show_dialog"):
-        page.show_dialog(snack_bar)
+    if hasattr(page, "show_snack_bar"):
+        page.show_snack_bar(snack_bar)
     elif hasattr(page, "open"):
         page.open(snack_bar)
+    elif hasattr(page, "show_dialog"):
+        page.show_dialog(snack_bar)
     else:
         page.snack_bar = snack_bar
         snack_bar.open = True
@@ -106,10 +108,13 @@ def main(page: ft.Page):
             show_login()
             page.update()
 
-        def on_change_password(new_password):
-            current_password[0] = new_password
+        def on_change_password(current_password_attempt, new_password, updated_vault):
+            if current_password_attempt != current_password[0]:
+                raise ValueError("Current password is incorrect.")
             if active_vault[0]:
-                storage.save(active_vault[0], current_password[0], keep_backups=False)
+                storage.change_password(updated_vault, current_password[0], new_password)
+                active_vault[0] = updated_vault
+                current_password[0] = new_password
 
         def on_import_vault(import_path, import_password):
             if not current_password[0]:
@@ -125,7 +130,12 @@ def main(page: ft.Page):
             active_vault[0] = imported_vault
             return imported_vault
 
-        dashboard = Dashboard(vault, storage.filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload)
+        def on_verify_backups():
+            if not current_password[0]:
+                raise ValueError("Current vault session is locked.")
+            return storage.verify_backups(current_password[0])
+
+        dashboard = Dashboard(vault, storage.filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload, on_verify_backups)
         page.add(dashboard)
 
     show_login()
