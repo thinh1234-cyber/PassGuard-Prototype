@@ -29,22 +29,36 @@ ERROR = "#ffb4ab"
 
 
 def padding_symmetric(horizontal=0, vertical=0):
-    if hasattr(ft, "Padding") and hasattr(ft.Padding, "symmetric"):
-        return ft.Padding.symmetric(horizontal=horizontal, vertical=vertical)
+    if hasattr(ft, "Padding"):
+        return ft.Padding(horizontal, vertical, horizontal, vertical)
     return ft.padding.symmetric(horizontal=horizontal, vertical=vertical)
 
 
 def padding_only(**kwargs):
-    return ft.padding.only(**kwargs)
+    left = kwargs.get("left", 0)
+    top = kwargs.get("top", 0)
+    right = kwargs.get("right", 0)
+    bottom = kwargs.get("bottom", 0)
+    if hasattr(ft, "Padding"):
+        return ft.Padding(left, top, right, bottom)
+    return ft.padding.only(left=left, top=top, right=right, bottom=bottom)
 
 
 def border_all(width=1, color=OUTLINE):
-    if hasattr(ft, "Border") and hasattr(ft.Border, "all"):
-        return ft.Border.all(width, color)
+    if hasattr(ft, "Border") and hasattr(ft, "BorderSide"):
+        side = ft.BorderSide(width, color)
+        return ft.Border(top=side, right=side, bottom=side, left=side)
     return ft.border.all(width, color)
 
 
 def border_only(**kwargs):
+    if hasattr(ft, "Border"):
+        return ft.Border(
+            top=kwargs.get("top"),
+            right=kwargs.get("right"),
+            bottom=kwargs.get("bottom"),
+            left=kwargs.get("left"),
+        )
     return ft.border.only(**kwargs)
 
 
