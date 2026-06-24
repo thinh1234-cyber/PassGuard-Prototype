@@ -1,52 +1,70 @@
-# LuuPass
+<div align="center">
 
-LuuPass là ứng dụng quản lý mật khẩu cá nhân theo hướng **offline-first**. Dữ liệu được lưu trong một file vault mã hóa local, không cần cloud server và không đồng bộ tự động qua Internet.
+<img src="assets/icon.png" alt="Logo" width="120">
 
-LuuPass được thiết kế để bảo vệ file vault khi đang khóa. Nếu máy đang nhiễm infostealer/keylogger/screen capture/clipboard monitor, không nên unlock vault thật trên máy đó.
+# LuuPass Vault
 
-## Tính năng chính
+> Ứng dụng quản lý mật khẩu cá nhân Offline-first • An toàn • Không Cloud
 
-- **Argon2id + AES-256-GCM:** Save mới dùng format `A2G1` với Argon2id (`time_cost=3`, `memory_cost=65536 KiB`, `parallelism=1`) và AES-GCM authenticated encryption. Header payload mới được authenticate bằng AAD.
-- **Backward Compatibility:** Vẫn đọc được vault legacy `GCM1` dùng PBKDF2-SHA256 480,000 iterations và payload Fernet cũ.
-- **Safe Save:** Ghi vào `.tmp` trước, sau đó atomic replace file vault chính.
-- **Backup Rotation + Healing:** Save thông thường giữ tối đa 3 backup `.bak1`, `.bak2`, `.bak3`; app có thể khôi phục từ backup nếu vault chính bị hỏng hoặc bị xóa.
-- **Safe Import:** Import phải nhập password của file import; app decrypt và validate thành công mới overwrite vault hiện tại. Vault import sẽ được save lại bằng `A2G1` và re-encrypt bằng master password đang unlock.
-- **Local Web Security:** Chế độ `--web` bind vào `127.0.0.1` và dùng route token ngẫu nhiên.
-- **Clipboard Auto-clear:** Copy username/password sẽ tự clear clipboard sau 15 giây; copy mới sẽ reset timer cũ.
-- **Offline Favicons:** Không gọi Google Favicon/API bên ngoài; icon được sinh offline từ title.
-- **Instant Search:** Tìm theo platform, URL, hoặc username.
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)]()
+[![Flet](https://img.shields.io/badge/UI-Flet-green.svg)]()
 
-## Cài đặt và chạy
+[Features](#-tính-năng) • [Install](#-cài-đặt) • [Usage](#-hướng-dẫn-sử-dụng) • [Architecture](#-kiến-trúc) • [Security](#-giới-hạn-bảo-mật)
 
-### Windows portable
+</div>
 
+---
+
+## 🎯 Tổng quan
+
+LuuPass là ứng dụng quản lý mật khẩu cá nhân theo hướng **offline-first**. Dữ liệu được lưu trong một file vault mã hóa cục bộ, hoàn toàn không cần cloud server và không đồng bộ tự động qua Internet.
+
+Dự án được thiết kế với mục tiêu bảo vệ dữ liệu *at-rest* bằng các tiêu chuẩn mã hóa mạnh nhất hiện nay, đảm bảo an toàn tối đa cho file vault của bạn khi đang ở trạng thái khóa.
+
+---
+
+## ✨ Tính năng
+
+### 🔐 Cryptography & Security
+| Tính năng | Mô tả |
+|-----------|-------|
+| 🛡️ **A2G1 Format** | Mã hóa chuẩn `Argon2id` (KDF) + `AES-256-GCM` (AEAD). Payload header được authenticate bằng AAD. |
+| 🔄 **Backward Compat**| Vẫn hỗ trợ đọc vault legacy `GCM1` (PBKDF2-SHA256) và payload Fernet cũ. |
+| 🌐 **Local Web Security**| Chế độ `--web` bind riêng `127.0.0.1` với route token ngẫu nhiên (chống unauthorized access). |
+| 📋 **Auto-clear** | Copy username/password tự động xóa clipboard sau 15 giây (có cơ chế chống xung đột timer). |
+
+### 💾 Storage & Data Management
+| Tính năng | Mô tả |
+|-----------|-------|
+| ⚡ **Safe Save** | Ghi dữ liệu ra `.tmp` trước khi atomic replace file vault chính, chống hỏng file khi mất điện. |
+| 🏥 **Healing Mode** | Auto rotate tối đa 3 bản backup (`.bak`). Tự động khôi phục từ backup nếu vault chính bị hỏng/xóa. |
+| 📥 **Safe Import** | Yêu cầu password của file import để validate trước khi ghi đè vault hiện tại. Tự động re-encrypt. |
+
+### 🎨 Core UI (Flet)
+| Tính năng | Mô tả |
+|-----------|-------|
+| 🔍 **Instant Search** | Tìm kiếm realtime theo platform, URL hoặc username. |
+| 🖼️ **Offline Favicon** | Tự động sinh icon dựa trên tên nền tảng, không gọi API ngoài (chống tracking). |
+| 📱 **Cross-platform** | Chạy mượt mà trên Windows (.exe), Web Local, và Android (Termux). |
+
+---
+
+## 📦 Cài đặt
+
+### Windows Portable
 1. Mở thư mục `dist/`.
-2. Chạy `LuuPass.exe`.
-3. Ứng dụng mở như cửa sổ desktop riêng.
+2. Chạy `LuuPass.exe` (Mở như một cửa sổ desktop độc lập).
+> **Build lại bản Windows:** Chạy lệnh `.\build.ps1 -Windows` trong PowerShell.
 
-Build lại bản Windows:
-
-```powershell
-.\build.ps1 -Windows
-```
-
-### Chạy từ source
-
-```powershell
+### Chạy từ Source (Windows/Linux/macOS)
+```bash
 pip install -r requirements.txt
 python main.py
 ```
 
-Dependencies chính:
-
-- `flet`
-- `cryptography`
-- `pydantic`
-- `argon2-cffi`
-- `pytest`
-
-### Android qua Termux
-
+### Android (thông qua Termux)
 ```bash
 pkg update && pkg upgrade
 pkg install python git
@@ -55,52 +73,77 @@ cd luu_pass
 pip install -r requirements.txt
 python main.py --web
 ```
+*Khi chạy `--web`, terminal sẽ in ra link local dạng `http://127.0.0.1:8550/<token>`. Nên mở link này trong tab Ẩn danh (Incognito) của trình duyệt mobile.*
 
-Khi chạy `--web`, terminal sẽ in ra link local dạng:
+---
 
-```text
-http://127.0.0.1:8550/<token>
-```
+## 📖 Hướng dẫn sử dụng
 
-Nên mở link này trong Incognito/private tab nếu dùng trình duyệt mobile.
+### Quản lý Dữ liệu
+- **File vault mặc định:** `vault.luupass`.
+- **Backup local:** `vault.luupass.bak1`, `.bak2`, `.bak3`.
+- **Export:** Copy chính xác file vault hiện tại ra vị trí bạn chọn (hỗ trợ Folder Picker trên desktop).
+- **Import:** Nhập file vault `.luupass` khác. Hệ thống sẽ hỏi password của file import và tự động xóa backup cũ để đảm bảo an toàn sau khi đổi vault.
 
-## Quản lý dữ liệu
-
-- File vault mặc định: `vault.luupass`.
-- Backup local: `vault.luupass.bak1`, `.bak2`, `.bak3`.
-- Export sẽ copy đúng file vault hiện tại ra vị trí bạn chọn, kể cả khi app được cấu hình dùng path khác `vault.luupass`.
-- Trong web mode, browser không cho chọn thư mục local trực tiếp; nhập path thủ công hoặc chạy desktop mode để dùng folder picker.
-- Import sẽ hỏi password của file import, validate trước, sau đó mới thay vault hiện tại.
-- Sau import hoặc change master password, backup cũ bị xóa để tránh việc password cũ vẫn mở được dữ liệu từ `.bak`.
-
-## Git hygiene
-
-Vault và backup không nên commit lên Git. `.gitignore` đã chặn:
-
+### Git Hygiene
+Vault và backup không bao giờ nên commit lên Git. `.gitignore` đã cấu hình chặn:
 ```gitignore
 *.luupass
 *.luupass.bak*
 *.luupass.tmp
 ```
+> ⚠️ **Cảnh báo:** Nếu `vault.luupass` từng bị commit/push lên remote, hãy coi ciphertext đã bị lộ và nên đổi master password ngay lập tức, hoặc purge Git history.
 
-Nếu `vault.luupass` từng bị commit/push lên remote, hãy coi ciphertext đã lộ và nên đổi master password hoặc purge Git history.
+---
 
-## Verification
+## 🏗 Kiến trúc
 
-Chạy test:
+### Cấu trúc thư mục
+```
+├── src/
+│   ├── models.py         # Pydantic data models (Vault, Entry, Account)
+│   ├── crypto.py         # KDF (Argon2id) & Encryption (AES-GCM) engine
+│   ├── storage.py        # File I/O, Atomic Save & Healing Mode
+│   └── ui/
+│       └── dashboard.py  # Flet UI Components & State management
+├── tests/
+│   └── test_storage.py   # Pytest suite cho Storage & Crypto
+├── main.py               # Entry point & Local Web Server binding
+├── build.ps1             # Script build file executable (Windows)
+├── architecture.md       # Tài liệu thiết kế hệ thống chi tiết
+└── requirements.txt      # Dependencies
+```
 
-```powershell
+---
+
+## 🔧 Công nghệ
+
+| Layer | Technology |
+|-------|------------|
+| **UI Framework** | Flet (Flutter-based Python UI) |
+| **Data Validation**| Pydantic v2 |
+| **Cryptography** | `cryptography` (AES-GCM), `argon2-cffi` (Argon2id) |
+| **Testing** | Pytest |
+
+---
+
+## 🛡️ Giới hạn bảo mật
+
+LuuPass bảo vệ cực tốt khi file vault đang **khóa**. 
+Khi vault đã được **unlock**, plaintext password sẽ tồn tại trong RAM/UI để phục vụ việc xem, sửa và copy. 
+
+Vì vậy, nếu máy tính bị nghi nhiễm malware (infostealer, keylogger, screen capture, clipboard monitor), cách an toàn nhất là làm sạch HĐH hoặc sử dụng thiết bị khác an toàn hơn trước khi unlock vault.
+
+---
+
+## ✅ Verification
+Chạy Unit Test để verify toàn bộ module mã hóa và lưu trữ:
+```bash
 python -m pytest -q
 ```
 
-Trạng thái hiện tại có test cho:
+---
 
-- Encrypt/decrypt `A2G1`.
-- Reject wrong password và tampered ciphertext.
-- Legacy `GCM1` và Fernet fallback.
-- Safe import đúng/sai password.
-- Import legacy vault và re-encrypt thành `A2G1`.
-
-## Giới hạn bảo mật
-
-LuuPass bảo vệ tốt hơn khi file vault đang khóa. Khi vault đã unlock, plaintext password tồn tại trong RAM/UI để phục vụ việc xem, sửa, copy và save. Vì vậy, trên máy nghi còn infostealer, cách dùng an toàn hơn là làm sạch OS hoặc dùng thiết bị sạch trước khi unlock vault và rotate password quan trọng.
+<div align="center">
+<p>Made with ❤️ by <b>Kyle (Nguyễn Thịnh)</b></p>
+</div>
