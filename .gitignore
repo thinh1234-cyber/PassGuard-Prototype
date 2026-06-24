@@ -11,8 +11,10 @@ build/
 dist/
 *.spec
 
-# LuuPass Vault (ignore default dev vaults)
-vault.luupass
+# LuuPass Vaults (never commit encrypted vault material)
+*.luupass
+*.luupass.bak*
+*.luupass.tmp
 
 # Environment
 .env

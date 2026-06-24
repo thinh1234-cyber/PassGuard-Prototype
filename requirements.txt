@@ -2,3 +2,4 @@ flet
 cryptography
 pydantic
 pytest
+argon2-cffi

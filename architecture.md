@@ -1,67 +1,121 @@
 # LuuPass - Project Architecture
 
-## 1. Tổng quan Kiến trúc (Overview)
-LuuPass là một ứng dụng quản lý mật khẩu được thiết kế theo kiến trúc **Offline-first (100% Nội bộ)** và **Cross-platform (Đa nền tảng)**, đảm bảo bảo mật tuyệt đối cho dữ liệu cá nhân mà không phụ thuộc vào bất kỳ máy chủ đám mây (Cloud Server) nào.
+## 1. Tổng quan kiến trúc
 
-Dự án được chia làm 3 tầng (Layers) chính để đảm bảo tính Module hóa, dễ bảo trì và mở rộng:
+LuuPass là ứng dụng quản lý mật khẩu cá nhân theo hướng **offline-first**: vault được lưu trong máy, không cần cloud server và không đồng bộ tự động qua Internet.
 
-1. **Tầng Lưu trữ & Dữ liệu (Storage & Data Layer)**: Định nghĩa cấu trúc dữ liệu và xử lý File I/O.
-2. **Tầng Mã hóa (Cryptography Layer)**: Trái tim bảo mật của hệ thống.
-3. **Tầng Giao diện Người dùng (UI / Presentation Layer)**: Quản lý hiển thị và tương tác người dùng qua Flet.
+Mục tiêu bảo mật chính của dự án là bảo vệ **dữ liệu at-rest**: nếu file vault bị copy đi, kẻ tấn công vẫn phải vượt qua lớp mã hóa. LuuPass không thể đảm bảo an toàn tuyệt đối nếu hệ điều hành đang bị compromise bởi infostealer, keylogger, screen capture, clipboard monitor hoặc malware đọc RAM.
+
+Dự án được chia thành 3 tầng chính:
+
+1. **Storage & Data Layer**: Định nghĩa model vault và xử lý File I/O.
+2. **Cryptography Layer**: Phái sinh key và mã hóa/giải mã payload.
+3. **UI / Presentation Layer**: Quản lý hiển thị và tương tác người dùng bằng Flet.
 
 ---
 
-## 2. Chi tiết các Tầng (Layers)
+## 2. Chi tiết các tầng
 
-### 2.1. Tầng Dữ liệu (Data Models)
-Sử dụng thư viện **Pydantic (v2)** để thiết lập cấu trúc chặt chẽ (Strict Typing) và tự động Validate (Kiểm tra hợp lệ) dữ liệu:
+### 2.1. Data Models - `src/models.py`
+
+Sử dụng **Pydantic v2** để validate và serialize dữ liệu:
+
 - `Account`: Chứa `username` và `password`.
-- `Entry`: Tượng trưng cho 1 nền tảng (Platform), gồm `title`, `url`, `notes`, và một List các `Account`.
-- `Vault`: Gốc của toàn bộ dữ liệu, chứa List các `Entry`.
+- `Entry`: Đại diện cho một platform, gồm `title`, `url`, `notes`, và danh sách `accounts`.
+- `Vault`: Gốc của toàn bộ dữ liệu, chứa danh sách `entries`.
 
-=> Khi cần lưu, Pydantic dễ dàng Serialize toàn bộ cây `Vault` này thành 1 chuỗi JSON duy nhất (`model_dump_json`).
+Khi save, `Vault` được serialize thành JSON bằng `model_dump_json()`. Khi load/import, plaintext JSON sau giải mã phải parse thành công qua `Vault.model_validate_json()` mới được chấp nhận.
 
-### 2.2. Tầng Mã hóa (Cryptography Layer - `src/crypto.py`)
-Kiến trúc mã hóa tuân thủ nghiêm ngặt các tiêu chuẩn bảo mật hiện đại:
-- **Thuật toán chính:** `AES-256-GCM` (Authenticated Encryption with Associated Data).
-- **Key Derivation (Phái sinh khóa):** Sử dụng `PBKDF2HMAC` kết hợp với chuẩn Hash `SHA256` qua `480,000` vòng lặp (Iterations) để chống lại các cuộc tấn công Brute-force/Dictionary.
-- **Bảo mật thành phần:** 
-  - `Salt` (16 bytes): Sinh ngẫu nhiên (`os.urandom`) cho mỗi lần Save, làm Key derivation luôn thay đổi.
-  - `Nonce` (12 bytes): Sinh ngẫu nhiên chống tấn công Replay Attack.
-- **Cấu trúc File (Payload Formatter):** `4-byte Header ('GCM1')` + `16-byte Salt` + `12-byte Nonce` + `Ciphertext (kèm Auth Tag)`.
+### 2.2. Cryptography Layer - `src/crypto.py`
 
-### 2.3. Tầng Lưu trữ (Storage Layer - `src/storage.py`)
-- **Atomic Save (Safe Save):** Cơ chế ghi file theo nguyên tắc: "Ghi ra file `.tmp` trước, ghi xong mới thay thế file gốc `.luupass`". Tuyệt đối không bao giờ làm hỏng dữ liệu dù app crash giữa chừng hay cúp điện.
-- **Healing Mode (Tự phục hồi):** Tự động duy trì 3 phiên bản Backup (File `.bak1`, `.bak2`, `.bak3`). Khi hàm Load phát hiện file gốc bị lỗi (Corrupted / InvalidTag) nhưng mật khẩu đúng, nó sẽ tự động vét các file Backup để khôi phục lại dữ liệu chính.
+Format mã hóa mặc định hiện tại là **`A2G1`**:
 
-### 2.4. Tầng Giao diện (UI Layer - `src/ui/dashboard.py` & `main.py`)
-Sử dụng Framework **Flet** (Dựa trên Flutter Engine), đáp ứng mượt mà cả Desktop (Windows Native) và Web (Mobile Browser via Termux).
-- **Phân tách State (State Management):** Truyền các hàm Callback (`on_save`, `on_lock`, `on_change_password`) từ `main.py` vào `Dashboard` để giữ luồng dữ liệu một chiều (One-way Data Flow).
-- **Responsive Layout:** Tự động lắng nghe sự kiện `page.on_resize`. Nếu kích thước chiều rộng màn hình `< 800px` (Màn hình điện thoại), nó sẽ tự động chuyển từ chế độ "2 cột (Master-Detail)" sang chế độ "Ngăn xếp (Stack)", ẩn danh sách trái khi xem chi tiết.
-- **Local Security (Bảo mật cục bộ):**
-  - Giới hạn Binding IP (`127.0.0.1`), khóa chặt Port mạng LAN.
-  - Sử dụng Token sinh ngẫu nhiên `secrets.token_urlsafe(16)` trong Session để chặn các tiến trình Local truy cập trái phép.
-  - Auto-Clear Clipboard: Luồng chạy ngầm đếm ngược 15 giây để xóa bộ nhớ đệm chống Keylogger / Clipboard Monitor.
+- **AEAD:** `AES-256-GCM`.
+- **KDF:** `Argon2id`.
+- **Argon2id profile:** `time_cost=3`, `memory_cost=65536 KiB`, `parallelism=1`, `hash_len=32`.
+- **KDF param bounds:** `time_cost`, `memory_cost_kib`, và `parallelism` có upper-bound để tránh file độc hại gây Local DoS khi decrypt.
+- **Salt:** 16 bytes ngẫu nhiên.
+- **Nonce:** 12 bytes ngẫu nhiên.
+- **File format:** `4-byte magic ('A2G1')` + `time_cost` + `memory_cost_kib` + `parallelism` + `salt` + `nonce` + `ciphertext`.
+- Ba tham số Argon2id được lưu dạng unsigned 32-bit big-endian để mỗi file tự mô tả được profile KDF cần dùng khi decrypt.
+- **AAD:** Header không mã hóa (`magic`, KDF params, salt, nonce) được đưa vào AES-GCM Associated Data cho payload mới. Decrypt vẫn fallback đọc được `A2G1` giai đoạn đầu chưa có AAD.
+
+Backward compatibility:
+
+- `GCM1`: Legacy AES-GCM với `PBKDF2HMAC-SHA256`, 480,000 iterations.
+- Legacy Fernet payload cũ: vẫn có fallback decrypt để tránh khóa mất vault cũ.
+- Mỗi lần save mới sẽ ghi lại bằng `A2G1`, kể cả khi dữ liệu ban đầu được import từ format legacy.
+
+### 2.3. Storage Layer - `src/storage.py`
+
+- **Atomic Save:** Dữ liệu được encrypt, ghi vào file `.tmp`, sau đó thay thế file vault bằng `os.replace()`.
+- **Backup Rotation:** Save thông thường giữ tối đa 3 backup: `.bak1`, `.bak2`, `.bak3`.
+- **Healing Mode:** Nếu vault chính bị hỏng hoặc bị xóa nhưng backup decrypt/parse thành công với password đang nhập, app có thể khôi phục từ backup.
+- **Safe Import:** File import phải decrypt bằng password của file import và parse thành `Vault` thành công trước khi overwrite vault hiện tại.
+- **Re-encrypt On Import:** Vault import hợp lệ sẽ được save lại bằng format `A2G1`.
+- **Clear Backups On Root Secret Change:** Import vault và change master password xóa backup cũ trước khi ghi file mới, tránh trường hợp backup cũ vẫn mở được bằng password cũ.
+- **Git Hygiene:** `.gitignore` chặn `*.luupass`, `*.luupass.bak*`, và `*.luupass.tmp`; file vault không nên nằm trong Git index.
+
+### 2.4. UI Layer - `main.py` và `src/ui/dashboard.py`
+
+UI dùng **Flet** cho desktop native và local web mode:
+
+- **Local Web Binding:** Khi chạy `--web`, server bind vào `127.0.0.1`, không mở port LAN.
+- **Session Route Token:** App sinh `secrets.token_urlsafe(16)` và yêu cầu URL dạng `http://127.0.0.1:8550/<token>`.
+- **Clipboard Auto-clear:** Copy username/password sẽ tự clear clipboard sau 15 giây.
+- **Safe Import Dialog:** Khi chọn file import, UI hỏi `Import Vault Password`, sau đó gọi storage validate/import. Nếu password sai hoặc file corrupt, vault hiện tại không bị thay đổi.
+- **Dynamic Export Path:** Dashboard nhận `storage.filepath` từ `main.py`, nên export dùng đúng vault hiện tại thay vì hardcode `vault.luupass`.
+- **Clipboard Timer Reset:** Mỗi lần copy sẽ hủy timer clear clipboard cũ rồi đặt timer 15 giây mới, tránh xóa clipboard sớm khi user copy liên tiếp.
+- **State:** Khi unlock, master password và plaintext `Vault` tồn tại trong RAM để cho phép save/edit. Đây là tradeoff UX và là rủi ro nếu máy đang nhiễm malware.
 
 ---
 
-## 3. Luồng hoạt động (Data Flow)
+## 3. Luồng hoạt động
 
-### 3.1. Kịch bản Unlock (Mở khóa)
-1. User nhập Master Password vào `main.py`.
-2. `storage.load()` được gọi -> Đọc Byte từ `vault.luupass`.
-3. Kiểm tra Header (`GCM1`). Tách Salt, Nonce, Ciphertext.
-4. Sinh Key bằng PBKDF2.
-5. Giải mã (Decrypt). Nếu sai Pass, Auth Tag báo `InvalidTag` -> Báo lỗi.
-6. Nếu đúng Pass, trả về chuỗi JSON -> Pydantic Parse thành Object `Vault`.
-7. Vẽ `Dashboard` UI dựa trên cây Object `Vault`.
+### 3.1. Unlock
 
-### 3.2. Kịch bản Đóng gói (Save/Export)
-1. Khi có sự thay đổi trên UI (Thêm/Sửa/Xóa Account), UI sửa trực tiếp trên biến Object trong RAM.
-2. Bấm Save -> Pydantic dump từ Object thành JSON String.
-3. Đẩy JSON String qua `crypto.encrypt()` để bọc lại thành gói Ciphertext mới toanh (với Salt và Nonce mới).
-4. `storage.save()` thực hiện xoay tua Backup (Healing Mode) rồi đè File `.tmp` lên File gốc.
+1. User nhập Master Password.
+2. `storage.load()` đọc `vault.luupass`.
+3. `crypto.decrypt()` nhận diện header: `A2G1`, `GCM1`, hoặc legacy Fernet.
+4. Sinh key bằng Argon2id hoặc legacy PBKDF2 tùy theo format.
+5. AES-GCM/Fernet decrypt và verify integrity.
+6. Plaintext JSON được validate bằng Pydantic thành `Vault`.
+7. Dashboard hiển thị dữ liệu plaintext trong RAM.
+
+### 3.2. Save
+
+1. UI cập nhật object `Vault` trong RAM.
+2. Khi save, `Vault` serialize thành JSON.
+3. `crypto.encrypt()` tạo payload `A2G1` mới với salt/nonce mới.
+4. `storage.save()` rotate backup nếu là save thông thường, sau đó atomic replace vault chính.
+
+### 3.3. Import
+
+1. User chọn file `.luupass` cần import.
+2. UI hỏi password của file import.
+3. `storage.validate_import_file()` decrypt và parse file import.
+4. Nếu validate fail, vault hiện tại giữ nguyên.
+5. Nếu validate pass, app xóa backup cũ và save vault import bằng `A2G1`.
+6. App lock lại để user unlock bằng password của vault import.
 
 ---
 
-*LuuPass Architecture v2.0 - Designed for Simplicity, Built for Security.*
+## 4. Threat Model thực tế
+
+LuuPass phù hợp để giảm rủi ro khi:
+
+- File vault bị copy, đồng bộ nhầm, hoặc bị lấy từ ổ đĩa.
+- Cần một password manager offline, không phụ thuộc cloud.
+- Muốn tự quản lý backup/import/export một file mã hóa duy nhất.
+
+LuuPass không giải quyết được hoàn toàn khi:
+
+- Máy đang có infostealer, keylogger, clipboard monitor, screen capture, hoặc malware đọc RAM.
+- User unlock vault trên OS không sạch.
+- Password bị lộ qua browser history, screen recording, fake keyboard, hoặc clipboard trước khi auto-clear.
+
+Khuyến nghị vận hành: chỉ unlock vault thật trên máy đã được làm sạch hoặc OS/thiết bị đáng tin cậy. Nếu vault từng nằm trong Git remote, cần coi ciphertext đã lộ và nên đổi master password hoặc purge history.
+
+---
+
+*LuuPass Architecture v3.0 - Offline-first, Argon2id-hardened, safe-import aware.*
