@@ -10,7 +10,7 @@ LuuPass được thiết kế để bảo vệ file vault khi đang khóa. Nếu
 - **Backward Compatibility:** Vẫn đọc được vault legacy `GCM1` dùng PBKDF2-SHA256 480,000 iterations và payload Fernet cũ.
 - **Safe Save:** Ghi vào `.tmp` trước, sau đó atomic replace file vault chính.
 - **Backup Rotation + Healing:** Save thông thường giữ tối đa 3 backup `.bak1`, `.bak2`, `.bak3`; app có thể khôi phục từ backup nếu vault chính bị hỏng hoặc bị xóa.
-- **Safe Import:** Import phải nhập password của file import; app decrypt và validate thành công mới overwrite vault hiện tại. Vault import sẽ được save lại bằng `A2G1`.
+- **Safe Import:** Import phải nhập password của file import; app decrypt và validate thành công mới overwrite vault hiện tại. Vault import sẽ được save lại bằng `A2G1` và re-encrypt bằng master password đang unlock.
 - **Local Web Security:** Chế độ `--web` bind vào `127.0.0.1` và dùng route token ngẫu nhiên.
 - **Clipboard Auto-clear:** Copy username/password sẽ tự clear clipboard sau 15 giây; copy mới sẽ reset timer cũ.
 - **Offline Favicons:** Không gọi Google Favicon/API bên ngoài; icon được sinh offline từ title.

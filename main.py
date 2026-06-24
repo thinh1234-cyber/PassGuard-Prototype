@@ -90,12 +90,14 @@ def main(page: ft.Page):
         password_input.focus()
 
     def show_dashboard(vault):
+        active_vault = [vault]
         page.controls.clear()
         # Reset alignment for dashboard
         page.vertical_alignment = ft.MainAxisAlignment.START
         page.horizontal_alignment = ft.CrossAxisAlignment.START
         
         def on_save(updated_vault):
+            active_vault[0] = updated_vault
             if current_password[0]:
                 storage.save(updated_vault, current_password[0])
                 
@@ -106,14 +108,22 @@ def main(page: ft.Page):
 
         def on_change_password(new_password):
             current_password[0] = new_password
-            if vault:
-                storage.save(vault, current_password[0], keep_backups=False)
+            if active_vault[0]:
+                storage.save(active_vault[0], current_password[0], keep_backups=False)
 
         def on_import_vault(import_path, import_password):
-            return storage.import_vault(import_path, import_password)
+            if not current_password[0]:
+                raise ValueError("Current vault session is locked.")
+            imported_vault = storage.import_vault(import_path, import_password, current_password[0])
+            active_vault[0] = imported_vault
+            return imported_vault
 
         def on_import_vault_payload(import_payload, import_password):
-            return storage.import_vault_payload(import_payload, import_password)
+            if not current_password[0]:
+                raise ValueError("Current vault session is locked.")
+            imported_vault = storage.import_vault_payload(import_payload, import_password, current_password[0])
+            active_vault[0] = imported_vault
+            return imported_vault
 
         dashboard = Dashboard(vault, storage.filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload)
         page.add(dashboard)

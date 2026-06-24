@@ -13,25 +13,62 @@ from src.models import Account, Entry, Vault
 COLORS = getattr(ft, "Colors", None) or getattr(ft, "colors")
 ICONS = getattr(ft, "Icons", None) or getattr(ft, "icons")
 
-BG = "#12131b"
-SURFACE = "#1a1b23"
-SURFACE_LOW = "#1f1f27"
-SURFACE_HIGH = "#292932"
-SURFACE_HIGHEST = "#34343d"
-TEXT = "#e3e1ed"
-MUTED = "#c6c5d7"
-OUTLINE = "#454655"
-PRIMARY = "#bec2ff"
-PRIMARY_CONTAINER = "#5865f2"
-ON_PRIMARY = "#000da4"
-SUCCESS = "#4edea3"
-ERROR = "#ffb4ab"
+DARK_PALETTE = {
+    "BG": "#12131b",
+    "SHELL": "#151720",
+    "SIDEBAR": "#0d0e16",
+    "SURFACE": "#1a1b23",
+    "SURFACE_LOW": "#1f1f27",
+    "SURFACE_HIGH": "#292932",
+    "SURFACE_HIGHEST": "#34343d",
+    "TEXT": "#e3e1ed",
+    "MUTED": "#c6c5d7",
+    "OUTLINE": "#454655",
+    "BORDER": "#242632",
+    "PRIMARY": "#bec2ff",
+    "PRIMARY_CONTAINER": "#5865f2",
+    "ON_PRIMARY": "#000da4",
+    "SUCCESS": "#4edea3",
+    "ERROR": "#ffb4ab",
+    "WARNING_BG": "#22191b",
+    "WARNING_BORDER": "#4a2c31",
+}
+
+LIGHT_PALETTE = {
+    "BG": "#f6f7fb",
+    "SHELL": "#ffffff",
+    "SIDEBAR": "#eef1f8",
+    "SURFACE": "#ffffff",
+    "SURFACE_LOW": "#f1f3f9",
+    "SURFACE_HIGH": "#e7eaf4",
+    "SURFACE_HIGHEST": "#dce1ef",
+    "TEXT": "#171923",
+    "MUTED": "#596174",
+    "OUTLINE": "#ccd2e0",
+    "BORDER": "#d9deea",
+    "PRIMARY": "#3f4cda",
+    "PRIMARY_CONTAINER": "#5865f2",
+    "ON_PRIMARY": "#ffffff",
+    "SUCCESS": "#00865c",
+    "ERROR": "#b3261e",
+    "WARNING_BG": "#fff3f1",
+    "WARNING_BORDER": "#ffd7d2",
+}
+
+BG = SURFACE = SURFACE_LOW = SURFACE_HIGH = SURFACE_HIGHEST = TEXT = MUTED = OUTLINE = PRIMARY = PRIMARY_CONTAINER = ON_PRIMARY = SUCCESS = ERROR = "#000000"
+SHELL = SIDEBAR = BORDER = WARNING_BG = WARNING_BORDER = "#000000"
+
+
+def apply_palette(mode="dark"):
+    palette = LIGHT_PALETTE if mode == "light" else DARK_PALETTE
+    globals().update(palette)
+
+
+apply_palette("dark")
 
 
 def padding_symmetric(horizontal=0, vertical=0):
-    if hasattr(ft, "Padding"):
-        return ft.Padding(horizontal, vertical, horizontal, vertical)
-    return ft.padding.symmetric(horizontal=horizontal, vertical=vertical)
+    return ft.Padding(horizontal, vertical, horizontal, vertical)
 
 
 def padding_only(**kwargs):
@@ -39,9 +76,15 @@ def padding_only(**kwargs):
     top = kwargs.get("top", 0)
     right = kwargs.get("right", 0)
     bottom = kwargs.get("bottom", 0)
-    if hasattr(ft, "Padding"):
-        return ft.Padding(left, top, right, bottom)
-    return ft.padding.only(left=left, top=top, right=right, bottom=bottom)
+    return ft.Padding(left, top, right, bottom)
+
+
+def margin_only(**kwargs):
+    left = kwargs.get("left", 0)
+    top = kwargs.get("top", 0)
+    right = kwargs.get("right", 0)
+    bottom = kwargs.get("bottom", 0)
+    return ft.Margin(left, top, right, bottom)
 
 
 def border_all(width=1, color=OUTLINE):
@@ -80,6 +123,16 @@ def file_type_custom():
 
 
 def default_export_dir():
+    candidates = [
+        os.environ.get("LUUPASS_EXPORT_DIR"),
+        os.path.expanduser("~/storage/downloads"),
+        "/storage/emulated/0/Download",
+        os.path.expanduser("~/Downloads"),
+    ]
+    for path in candidates:
+        if path and os.path.isdir(path):
+            return path
+
     if "android" in platform.platform().lower():
         return "/storage/emulated/0/Download"
     return os.path.expanduser("~/Downloads")
@@ -105,6 +158,7 @@ class Dashboard(ft.Container):
         self.export_path_field = None
         self.clipboard_clear_timer = None
         self.is_mobile = False
+        self.ui_theme = "dark"
 
         self.export_picker = self.create_file_picker(self.export_result)
         self.export_folder_picker = self.create_file_picker(self.export_folder_result)
@@ -203,7 +257,7 @@ class Dashboard(ft.Container):
             border_radius=12,
             bgcolor=palette[color_idx],
             alignment=alignment_center(),
-            content=ft.Text(letter, color="#fffdff", size=18, weight=ft.FontWeight.BOLD),
+            content=ft.Text(letter, color=ON_PRIMARY, size=18, weight=ft.FontWeight.BOLD),
         )
 
     def text_button(self, label, icon, on_click, selected=False):
@@ -215,8 +269,8 @@ class Dashboard(ft.Container):
             on_click=on_click,
             content=ft.Row(
                 [
-                    ft.Icon(icon, size=20, color="#fffdff" if selected else MUTED),
-                    ft.Text(label, size=14, weight=ft.FontWeight.W_600, color="#fffdff" if selected else MUTED),
+                    ft.Icon(icon, size=20, color=ON_PRIMARY if selected else MUTED),
+                    ft.Text(label, size=14, weight=ft.FontWeight.W_600, color=ON_PRIMARY if selected else MUTED),
                 ],
                 spacing=10,
             ),
@@ -227,7 +281,7 @@ class Dashboard(ft.Container):
             icon=icon,
             tooltip=tooltip,
             on_click=on_click,
-            icon_color="#fffdff" if selected else MUTED,
+            icon_color=ON_PRIMARY if selected else MUTED,
             bgcolor=PRIMARY_CONTAINER if selected else SURFACE_HIGH,
         )
 
@@ -250,8 +304,8 @@ class Dashboard(ft.Container):
         return ft.Container(
             width=250,
             padding=24,
-            bgcolor="#0d0e16",
-            border=border_only(right=ft.BorderSide(1, "#242632")),
+            bgcolor=SIDEBAR,
+            border=border_only(right=ft.BorderSide(1, BORDER)),
             content=ft.Column(
                 [
                     ft.Row(
@@ -262,7 +316,7 @@ class Dashboard(ft.Container):
                                 border_radius=12,
                                 bgcolor=PRIMARY_CONTAINER,
                                 alignment=alignment_center(),
-                                content=ft.Icon(ICONS.SHIELD, color="#fffdff", size=24),
+                                content=ft.Icon(ICONS.SHIELD, color=ON_PRIMARY, size=24),
                             ),
                             ft.Column(
                                 [
@@ -279,7 +333,7 @@ class Dashboard(ft.Container):
                         padding=16,
                         border_radius=16,
                         bgcolor=SURFACE,
-                        border=border_all(1, "#242632"),
+                        border=border_all(1, BORDER),
                         content=ft.Column(
                             [
                                 ft.Text("Vault Status", size=12, color=MUTED, weight=ft.FontWeight.W_600),
@@ -313,7 +367,7 @@ class Dashboard(ft.Container):
             height=76,
             border_radius=12,
             bgcolor=SURFACE_HIGH if selected else SURFACE,
-            border=border_all(1, PRIMARY if selected else "#242632"),
+            border=border_all(1, PRIMARY if selected else BORDER),
             padding=padding_only(left=12, right=12, top=10, bottom=10),
             on_click=lambda e, entry=entry: self.select_entry(entry),
             content=ft.Row(
@@ -372,8 +426,8 @@ class Dashboard(ft.Container):
         return ft.Container(
             expand=True,
             padding=16 if mobile else 24,
-            bgcolor=BG if mobile else "#151720",
-            border=border_only(right=ft.BorderSide(1, "#242632")) if not mobile else None,
+            bgcolor=BG if mobile else SHELL,
+            border=border_only(right=ft.BorderSide(1, BORDER)) if not mobile else None,
             content=ft.Column(
                 [
                     header,
@@ -406,8 +460,8 @@ class Dashboard(ft.Container):
                     ft.Container(
                         height=64,
                         padding=padding_symmetric(horizontal=12, vertical=8),
-                        bgcolor="#151720",
-                        border=border_only(bottom=ft.BorderSide(1, "#242632")),
+                        bgcolor=SHELL,
+                        border=border_only(bottom=ft.BorderSide(1, BORDER)),
                         content=ft.Row(
                             [
                                 ft.IconButton(icon=ICONS.ARROW_BACK, icon_color=MUTED, on_click=self.go_back),
@@ -426,7 +480,7 @@ class Dashboard(ft.Container):
                 ft.Container(
                     height=64,
                     padding=padding_symmetric(horizontal=16, vertical=10),
-                    bgcolor="#151720",
+                    bgcolor=SHELL,
                     content=ft.Row(
                         [
                             ft.Text("LuuPass", color=PRIMARY, size=22, weight=ft.FontWeight.BOLD, expand=True),
@@ -436,11 +490,11 @@ class Dashboard(ft.Container):
                     ),
                 ),
                 ft.Container(
-                    margin=padding_only(left=16, right=16, top=12, bottom=4),
+                    margin=margin_only(left=16, right=16, top=12, bottom=4),
                     padding=16,
                     border_radius=16,
                     bgcolor=SURFACE,
-                    border=border_all(1, "#242632"),
+                    border=border_all(1, BORDER),
                     content=ft.Row(
                         [
                             ft.Column(
@@ -466,8 +520,8 @@ class Dashboard(ft.Container):
                 ft.Container(
                     height=64,
                     padding=padding_symmetric(horizontal=20, vertical=8),
-                    bgcolor="#151720",
-                    border=border_only(top=ft.BorderSide(1, "#242632")),
+                    bgcolor=SHELL,
+                    border=border_only(top=ft.BorderSide(1, BORDER)),
                     content=ft.Row(
                         [
                             ft.IconButton(icon=ICONS.LIST, icon_color=PRIMARY, tooltip="Vault", on_click=lambda e: self.select_entry(None)),
@@ -489,7 +543,7 @@ class Dashboard(ft.Container):
                 expand=True,
                 border_radius=18,
                 bgcolor=SURFACE,
-                border=border_all(1, "#242632"),
+                border=border_all(1, BORDER),
                 alignment=alignment_center(),
                 content=ft.Column(
                     [
@@ -533,23 +587,23 @@ class Dashboard(ft.Container):
             expand=True,
             border_radius=18,
             bgcolor=SURFACE,
-            border=border_all(1, "#242632"),
+            border=border_all(1, BORDER),
             padding=20,
             content=ft.Column(
                 [
                     header,
-                    ft.Divider(color="#242632"),
+                    ft.Divider(color=BORDER),
                     ft.Column([title_field, url_field], spacing=12) if self.is_mobile else ft.Row([title_field, url_field], spacing=12),
                     ft.Container(height=4),
                     self.section_title("Linked Accounts"),
                     ft.Column(account_controls, spacing=10),
                     flet_button("Add Another Account", icon=ICONS.ADD, on_click=lambda e: self.add_account(entry)),
-                    ft.Divider(color="#242632"),
+                    ft.Divider(color=BORDER),
                     notes_field,
                     ft.Row(
                         [
                             ft.Container(expand=True),
-                            flet_button("Save Changes", icon=ICONS.SAVE, bgcolor=PRIMARY_CONTAINER, color="#fffdff", on_click=self.save_current_entry),
+                            flet_button("Save Changes", icon=ICONS.SAVE, bgcolor=PRIMARY_CONTAINER, color=ON_PRIMARY, on_click=self.save_current_entry),
                         ],
                     ),
                 ],
@@ -577,7 +631,7 @@ class Dashboard(ft.Container):
             padding=16,
             border_radius=14,
             bgcolor=SURFACE_LOW,
-            border=border_all(1, "#242632"),
+            border=border_all(1, BORDER),
             content=ft.Column(
                 [
                     ft.Row(
@@ -605,7 +659,8 @@ class Dashboard(ft.Container):
             on_click=self.choose_export_folder,
         )
         export_to_folder_btn = flet_button("Export to Folder", icon=ICONS.DOWNLOAD, on_click=self.export_to_path)
-        save_as_btn = flet_button("Save As...", icon=ICONS.SAVE, on_click=self.save_as_export)
+        save_as_label = "Download Vault" if self.page and getattr(self.page, "web", False) else "Save As..."
+        save_as_btn = flet_button(save_as_label, icon=ICONS.SAVE, on_click=self.save_as_export)
         import_btn = flet_button("Import Vault", icon=ICONS.UPLOAD, on_click=self.pick_import_vault)
         change_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
 
@@ -621,7 +676,7 @@ class Dashboard(ft.Container):
             expand=True,
             border_radius=18,
             bgcolor=SURFACE,
-            border=border_all(1, "#242632"),
+            border=border_all(1, BORDER),
             padding=20,
             content=ft.Column(
                 [
@@ -632,7 +687,7 @@ class Dashboard(ft.Container):
                         ],
                         spacing=12,
                     ),
-                    ft.Divider(color="#242632"),
+                    ft.Divider(color=BORDER),
                     self.section_title("Appearance"),
                     flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme),
                     ft.Container(height=4),
@@ -644,15 +699,16 @@ class Dashboard(ft.Container):
                     ft.Column(
                         [
                             ft.Row([self.export_path_field, choose_export_path_btn], spacing=8),
-                            ft.Row([export_to_folder_btn, save_as_btn, import_btn], spacing=8),
+                            ft.Column([export_to_folder_btn, save_as_btn, import_btn], spacing=8)
+                            if self.is_mobile else ft.Row([export_to_folder_btn, save_as_btn, import_btn], spacing=8),
                         ],
                         spacing=10,
                     ),
                     ft.Container(
                         padding=12,
                         border_radius=12,
-                        bgcolor="#22191b",
-                        border=border_all(1, "#4a2c31"),
+                        bgcolor=WARNING_BG,
+                        border=border_all(1, WARNING_BORDER),
                         content=ft.Row(
                             [
                                 ft.Icon(ICONS.WARNING, color=ERROR, size=20),
@@ -701,8 +757,9 @@ class Dashboard(ft.Container):
             if self.export_path_field and getattr(self.export_path_field, "page", None):
                 self.export_path_field.focus()
             return
+        picker = self.export_folder_picker if self.uses_legacy_file_picker() else ft.FilePicker()
         result = await self.maybe_await(
-            self.export_folder_picker.get_directory_path(
+            picker.get_directory_path(
                 dialog_title="Choose Export Folder",
                 initial_directory=self.export_dir or default_export_dir(),
             )
@@ -730,8 +787,17 @@ class Dashboard(ft.Container):
         else:
             kwargs["initial_directory"] = self.export_dir
 
-        result = await self.maybe_await(self.export_picker.save_file(**kwargs))
-        if result is not None:
+        picker = self.export_picker if self.uses_legacy_file_picker() else ft.FilePicker()
+        try:
+            result = await self.maybe_await(picker.save_file(**kwargs))
+        except TypeError:
+            kwargs.pop("src_bytes", None)
+            kwargs.pop("file_type", None)
+            result = await self.maybe_await(picker.save_file(**kwargs))
+
+        if getattr(self.page, "web", False):
+            self.show_snack("Vault download started.", bgcolor=SUCCESS)
+        elif result is not None:
             self.export_result(result)
 
     async def pick_import_vault(self, e):
@@ -746,12 +812,18 @@ class Dashboard(ft.Container):
         if getattr(self.page, "web", False):
             kwargs["with_data"] = True
 
-        result = await self.maybe_await(self.import_picker.pick_files(**kwargs))
+        picker = self.import_picker if self.uses_legacy_file_picker() else ft.FilePicker()
+        try:
+            result = await self.maybe_await(picker.pick_files(**kwargs))
+        except TypeError:
+            kwargs.pop("with_data", None)
+            kwargs.pop("file_type", None)
+            result = await self.maybe_await(picker.pick_files(**kwargs))
         if result is not None:
             self.import_result(result)
 
     def show_web_filepicker_notice(self):
-        self.show_snack("Browser mode cannot choose local folders. Enter a local path manually or run desktop mode.", bgcolor=COLORS.ERROR)
+        self.show_snack("Browser mode cannot choose folders. Use Download Vault or enter a Termux/server path manually.", bgcolor=ERROR)
 
     def export_to_path(self, e):
         dest_dir = self.export_dir.strip()
@@ -813,14 +885,19 @@ class Dashboard(ft.Container):
                 if self.pending_import_payload is not None:
                     if not self.on_import_vault_payload:
                         raise ValueError("Import payload handler is not configured.")
-                    self.on_import_vault_payload(self.pending_import_payload, password_field.value)
+                    imported_vault = self.on_import_vault_payload(self.pending_import_payload, password_field.value)
                 else:
-                    self.on_import_vault(self.pending_import_path, password_field.value)
+                    imported_vault = self.on_import_vault(self.pending_import_path, password_field.value)
                 password_field.value = ""
                 self.pending_import_path = None
                 self.pending_import_payload = None
                 self.close_dialog(dialog)
-                self.on_lock()
+                if imported_vault is not None:
+                    self.vault = imported_vault
+                self.selected_entry = None
+                self.show_settings = False
+                self.refresh()
+                self.show_snack("Vault imported successfully.", bgcolor=SUCCESS)
             except Exception as ex:
                 password_field.value = ""
                 self.show_snack(f"Import Error: {ex}", bgcolor=ERROR)
@@ -902,5 +979,10 @@ class Dashboard(ft.Container):
         timer.start()
 
     def toggle_theme(self, e):
-        self.page.theme_mode = ft.ThemeMode.LIGHT if self.page.theme_mode == ft.ThemeMode.DARK else ft.ThemeMode.DARK
-        self.page.update()
+        self.ui_theme = "light" if self.ui_theme == "dark" else "dark"
+        apply_palette(self.ui_theme)
+        self.bgcolor = BG
+        if self.page:
+            self.page.bgcolor = BG
+            self.page.theme_mode = ft.ThemeMode.LIGHT if self.ui_theme == "light" else ft.ThemeMode.DARK
+        self.refresh()

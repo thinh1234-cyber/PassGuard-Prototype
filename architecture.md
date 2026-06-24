@@ -93,10 +93,11 @@ UI dùng **Flet** cho desktop native và local web mode:
 
 1. User chọn file `.luupass` cần import.
 2. UI hỏi password của file import.
-3. `storage.validate_import_file()` decrypt và parse file import.
+3. `storage.validate_import_file()` hoặc `storage.validate_import_payload()` decrypt và parse file import.
 4. Nếu validate fail, vault hiện tại giữ nguyên.
-5. Nếu validate pass, app xóa backup cũ và save vault import bằng `A2G1`.
-6. App lock lại để user unlock bằng password của vault import.
+5. Nếu validate pass, app rotate backup vault hiện tại và save vault import bằng `A2G1`.
+6. Password import chỉ dùng để decrypt file import; vault sau import được re-encrypt bằng master password đang unlock.
+7. UI cập nhật vault import trong session hiện tại, không lock app và không đổi master password âm thầm.
 
 ---
 

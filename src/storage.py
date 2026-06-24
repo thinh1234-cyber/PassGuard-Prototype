@@ -74,14 +74,16 @@ class VaultStorage:
         except Exception as e:
             raise ValueError("File import không hợp lệ hoặc mật khẩu import sai.") from e
 
-    def import_vault(self, import_path: str, password: str) -> Vault:
+    def import_vault(self, import_path: str, password: str, vault_password: str | None = None) -> Vault:
         imported_vault = self.validate_import_file(import_path, password)
-        self.save(imported_vault, password, keep_backups=False)
+        save_password = vault_password or password
+        self.save(imported_vault, save_password, keep_backups=vault_password is not None)
         return imported_vault
 
-    def import_vault_payload(self, payload: bytes, password: str) -> Vault:
+    def import_vault_payload(self, payload: bytes, password: str, vault_password: str | None = None) -> Vault:
         imported_vault = self.validate_import_payload(payload, password)
-        self.save(imported_vault, password, keep_backups=False)
+        save_password = vault_password or password
+        self.save(imported_vault, save_password, keep_backups=vault_password is not None)
         return imported_vault
 
     def load(self, password: str) -> Vault:

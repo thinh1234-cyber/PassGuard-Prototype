@@ -92,6 +92,40 @@ def test_import_vault_payload_replaces_current_vault(tmp_path):
     assert storage.load("import-pass").entries[0].title == "ImportedPayload"
 
 
+def test_import_can_keep_current_session_password(tmp_path):
+    vault_path = tmp_path / "vault.luupass"
+    import_path = tmp_path / "import.luupass"
+    storage = make_storage(vault_path)
+    import_storage = make_storage(import_path)
+
+    storage.save(Vault(entries=[Entry(title="Current")]), "current-pass")
+    import_storage.save(Vault(entries=[Entry(title="Imported")]), "import-pass")
+
+    imported_vault = storage.import_vault(str(import_path), "import-pass", vault_password="current-pass")
+
+    assert imported_vault.entries[0].title == "Imported"
+    assert storage.load("current-pass").entries[0].title == "Imported"
+    with pytest.raises(ValueError):
+        storage.load("import-pass")
+
+
+def test_import_payload_can_keep_current_session_password(tmp_path):
+    vault_path = tmp_path / "vault.luupass"
+    import_path = tmp_path / "import.luupass"
+    storage = make_storage(vault_path)
+    import_storage = make_storage(import_path)
+
+    storage.save(Vault(entries=[Entry(title="Current")]), "current-pass")
+    import_storage.save(Vault(entries=[Entry(title="ImportedPayload")]), "import-pass")
+
+    imported_vault = storage.import_vault_payload(import_path.read_bytes(), "import-pass", vault_password="current-pass")
+
+    assert imported_vault.entries[0].title == "ImportedPayload"
+    assert storage.load("current-pass").entries[0].title == "ImportedPayload"
+    with pytest.raises(ValueError):
+        storage.load("import-pass")
+
+
 def test_import_wrong_password_does_not_overwrite_current_vault(tmp_path):
     vault_path = tmp_path / "vault.luupass"
     import_path = tmp_path / "import.luupass"
