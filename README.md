@@ -69,6 +69,7 @@ Nên mở link này trong Incognito/private tab nếu dùng trình duyệt mobil
 - File vault mặc định: `vault.luupass`.
 - Backup local: `vault.luupass.bak1`, `.bak2`, `.bak3`.
 - Export sẽ copy đúng file vault hiện tại ra vị trí bạn chọn, kể cả khi app được cấu hình dùng path khác `vault.luupass`.
+- Trong web mode, browser không cho chọn thư mục local trực tiếp; nhập path thủ công hoặc chạy desktop mode để dùng folder picker.
 - Import sẽ hỏi password của file import, validate trước, sau đó mới thay vault hiện tại.
 - Sau import hoặc change master password, backup cũ bị xóa để tránh việc password cũ vẫn mở được dữ liệu từ `.bak`.
 

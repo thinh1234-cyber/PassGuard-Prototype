@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LuuPass - Entry Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #34343d;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #454655;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#002113",
+                        "outline": "#8f8fa0",
+                        "surface-container-high": "#292932",
+                        "tertiary": "#4edea3",
+                        "on-secondary-fixed": "#2c0051",
+                        "on-surface-variant": "#c6c5d7",
+                        "primary-container": "#5865f2",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-primary-container": "#fffdff",
+                        "surface-dim": "#12131b",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#6ffbbe",
+                        "inverse-primary": "#3f4cda",
+                        "surface-variant": "#34343d",
+                        "surface-container-lowest": "#0d0e16",
+                        "error-container": "#93000a",
+                        "background": "#12131b",
+                        "secondary-fixed": "#f0dbff",
+                        "on-tertiary-container": "#fafff9",
+                        "on-tertiary": "#003824",
+                        "inverse-on-surface": "#2f3039",
+                        "secondary": "#ddb7ff",
+                        "on-error": "#690005",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "surface-container-low": "#1a1b23",
+                        "surface-container": "#1f1f27",
+                        "secondary-fixed-dim": "#ddb7ff",
+                        "primary-fixed-dim": "#bec2ff",
+                        "on-secondary-container": "#d6a9ff",
+                        "surface-bright": "#383842",
+                        "surface": "#12131b",
+                        "on-surface": "#e3e1ed",
+                        "on-secondary-fixed-variant": "#6900b3",
+                        "on-primary": "#000da4",
+                        "tertiary-container": "#00865c",
+                        "outline-variant": "#454655",
+                        "on-primary-fixed-variant": "#222fc2",
+                        "on-primary-fixed": "#000569",
+                        "on-secondary": "#490080",
+                        "primary": "#bec2ff",
+                        "secondary-container": "#6f00be",
+                        "on-background": "#e3e1ed",
+                        "surface-tint": "#bec2ff",
+                        "primary-fixed": "#e0e0ff",
+                        "inverse-surface": "#e3e1ed",
+                        "surface-container-highest": "#34343d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "gutter": "16px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "lg": "24px",
+                        "sm": "8px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Inter"],
+                        "code-md": ["JetBrains Mono"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "code-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col relative selection:bg-primary/30 selection:text-primary-fixed">
+<!-- Detail View Header (Glassmorphic) -->
+<header class="fixed top-0 left-0 right-0 h-16 z-40 bg-background/80 backdrop-blur-md border-b border-outline-variant/10 flex items-center justify-between px-margin-mobile">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Entry Details</span>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[24px]">more_vert</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 w-full max-w-3xl mx-auto pt-24 pb-32 px-margin-mobile flex flex-col gap-lg">
+<!-- Hero Section: Platform Info -->
+<div class="flex flex-col items-center text-center gap-sm mt-md">
+<div class="w-20 h-20 rounded-2xl bg-surface-container-high border border-outline-variant/20 flex items-center justify-center mb-sm shadow-[0_0_30px_rgba(190,194,255,0.05)] overflow-hidden">
+<div class="bg-cover bg-center w-full h-full" data-alt="A sleek, minimalist digital rendering of a stylized X logo, evoking modern social media platforms, rendered in pure white against a deep, dark obsidian #12131b background. The lighting is subtle, creating a soft metallic sheen on the logo's surface, fitting a high-end, secure digital vault application." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBAqZp-b1EZyqPpcSl9_TiDzB0TKGFMDDr-5YGswxVhH_WNgKYrxZriT9SMckZ6oo75-pJFF5eSgdGzfDKqw5LTbSqdGiV5_MSQd0tKJGjTliIeGvYJyyfSLordgM8mc4ZT0X_tdqWFbctvftrRg75eJq0MQNzYPiJgHIqkdzcCsID76tiVM6VnZc3TsCQ0LoMvSUsu4Ig_LRY7BD6rp9SoHmn5gQ8Bnyp5b3SZfkgbjniqzx5mbwxbfWyTgtE1zse2P06qZlFIqh8')"></div>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">X (Twitter)</h1>
+<a class="font-body-md text-body-md text-primary hover:text-primary-fixed transition-colors flex items-center gap-xs group" href="#">
+                https://x.com
+                <span class="material-symbols-outlined text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+</a>
+</div>
+<!-- Accounts Container -->
+<div class="flex flex-col gap-md w-full">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest ml-xs">Linked Accounts</h2>
+<!-- Primary Account Card -->
+<div class="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden relative group">
+<!-- Selected State Accent Line -->
+<div class="absolute left-0 top-0 bottom-0 w-[2px] bg-primary"></div>
+<div class="p-md flex flex-col gap-md">
+<div class="flex items-center justify-between border-b border-outline-variant/10 pb-sm mb-xs">
+<span class="font-label-md text-label-md text-on-surface flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px] text-primary">person</span>
+                            Personal
+                        </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+                            Excellent
+                        </span>
+</div>
+<!-- Username Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-xs">Username / Email</label>
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-sm pl-md border border-outline-variant/20 hover:border-primary/50 transition-colors group/input">
+<span class="font-code-md text-code-md text-on-surface truncate pr-2">luupass_user_01</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Copy Username">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-xs">Password</label>
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-sm pl-md border border-outline-variant/20 hover:border-primary/50 transition-colors group/input">
+<span class="font-code-md text-code-md text-on-surface truncate tracking-widest pt-1" id="pass1">••••••••••••••••</span>
+<div class="flex items-center gap-xs">
+<button class="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" onclick="togglePassword('pass1', 'eye1', 'T$g7#kL9@pQ2!vN5')" title="Reveal Password">
+<span class="material-symbols-outlined text-[20px]" id="eye1">visibility</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Copy Password">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Secondary Account Card -->
+<div class="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden relative group opacity-80 hover:opacity-100 transition-opacity">
+<div class="p-md flex flex-col gap-md">
+<div class="flex items-center justify-between border-b border-outline-variant/10 pb-sm mb-xs">
+<span class="font-label-md text-label-md text-on-surface flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px] text-outline">work</span>
+                            Professional
+                        </span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+                            Updated 2mo ago
+                        </span>
+</div>
+<!-- Username Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-xs">Username / Email</label>
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-sm pl-md border border-outline-variant/20 hover:border-primary/50 transition-colors">
+<span class="font-code-md text-code-md text-on-surface truncate pr-2">contact@luupass.com</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Copy Username">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-md text-label-md text-on-surface-variant ml-xs">Password</label>
+<div class="flex items-center justify-between bg-surface-container rounded-lg p-sm pl-md border border-outline-variant/20 hover:border-primary/50 transition-colors">
+<span class="font-code-md text-code-md text-on-surface truncate tracking-widest pt-1" id="pass2">••••••••••••••••</span>
+<div class="flex items-center gap-xs">
+<button class="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" onclick="togglePassword('pass2', 'eye2', 'Corp_Sec_2023!!')" title="Reveal Password">
+<span class="material-symbols-outlined text-[20px]" id="eye2">visibility</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-md text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-colors" title="Copy Password">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Secure Notes Section -->
+<div class="flex flex-col gap-md w-full mt-sm">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest ml-xs flex items-center gap-sm">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+                Secure Notes
+            </h2>
+<div class="bg-surface-container-low rounded-xl border border-outline-variant/10 p-md">
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed min-h-[80px]">
+                    Account created during the 2021 rebrand. Primary recovery email is set to the secure proton account. 2FA is enabled via hardware key.
+                </p>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (Edit) -->
+<button class="fixed bottom-margin-desktop right-margin-desktop w-14 h-14 bg-primary text-on-primary rounded-xl flex items-center justify-center shadow-[0_4px_20px_rgba(190,194,255,0.3)] hover:bg-primary-fixed hover:scale-[1.02] active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit</span>
+</button>
+<script>
+        function togglePassword(passId, iconId, actualPass) {
+            const passElement = document.getElementById(passId);
+            const iconElement = document.getElementById(iconId);
+            const isHidden = passElement.innerText.includes('•');
+            
+            if (isHidden) {
+                passElement.innerText = actualPass;
+                passElement.classList.remove('tracking-widest', 'pt-1');
+                iconElement.innerText = 'visibility_off';
+            } else {
+                passElement.innerText = '••••••••••••••••';
+                passElement.classList.add('tracking-widest', 'pt-1');
+                iconElement.innerText = 'visibility';
+            }
+        }
+    </script>
+</body></html>

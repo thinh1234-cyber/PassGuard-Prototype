@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LuuPass - Secure Vault</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-on-surface": "#2f3039",
+                      "outline": "#8f8fa0",
+                      "on-secondary-fixed-variant": "#6900b3",
+                      "surface-container": "#1f1f27",
+                      "primary": "#bec2ff",
+                      "background": "#12131b",
+                      "surface-tint": "#bec2ff",
+                      "tertiary-fixed-dim": "#4edea3",
+                      "on-tertiary-fixed": "#002113",
+                      "surface-dim": "#12131b",
+                      "on-error-container": "#ffdad6",
+                      "on-background": "#e3e1ed",
+                      "tertiary-fixed": "#6ffbbe",
+                      "primary-fixed": "#e0e0ff",
+                      "surface-container-highest": "#34343d",
+                      "on-primary": "#000da4",
+                      "on-primary-fixed": "#000569",
+                      "primary-container": "#5865f2",
+                      "on-surface-variant": "#c6c5d7",
+                      "tertiary-container": "#00865c",
+                      "tertiary": "#4edea3",
+                      "surface": "#12131b",
+                      "primary-fixed-dim": "#bec2ff",
+                      "on-tertiary-container": "#fafff9",
+                      "inverse-primary": "#3f4cda",
+                      "error": "#ffb4ab",
+                      "on-error": "#690005",
+                      "on-primary-fixed-variant": "#222fc2",
+                      "secondary-fixed": "#f0dbff",
+                      "surface-container-lowest": "#0d0e16",
+                      "surface-container-high": "#292932",
+                      "error-container": "#93000a",
+                      "surface-variant": "#34343d",
+                      "secondary-container": "#6f00be",
+                      "outline-variant": "#454655",
+                      "on-primary-container": "#fffdff",
+                      "on-secondary-container": "#d6a9ff",
+                      "surface-bright": "#383842",
+                      "inverse-surface": "#e3e1ed",
+                      "on-tertiary": "#003824",
+                      "surface-container-low": "#1a1b23",
+                      "on-tertiary-fixed-variant": "#005236",
+                      "on-secondary": "#490080",
+                      "on-surface": "#e3e1ed",
+                      "secondary": "#ddb7ff",
+                      "on-secondary-fixed": "#2c0051",
+                      "secondary-fixed-dim": "#ddb7ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "margin-mobile": "16px",
+                      "xs": "4px",
+                      "md": "16px",
+                      "sm": "8px",
+                      "base": "4px",
+                      "lg": "24px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "code-md": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "display-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "code-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Custom styles for specific glowing effects not covered directly by Tailwind tokens */
+        .glass-panel {
+            background: rgba(29, 36, 44, 0.6); /* surface-container-high with opacity */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .input-glow:focus-within {
+            border-color: #bec2ff; /* primary */
+            box-shadow: 0 0 0 2px rgba(190, 194, 255, 0.2);
+        }
+        
+        .btn-glow:hover {
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Smooth scrollbar for the lists */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen flex overflow-hidden font-body-md text-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar (Mobile Only) -->
+<nav class="md:hidden flex justify-between items-center h-16 w-full px-xl sticky top-0 bg-surface/80 backdrop-blur-md border-b border-outline-variant/10 z-40">
+<div class="font-headline-md text-headline-md font-bold text-primary">LuuPass</div>
+<div class="flex items-center gap-md">
+<button aria-label="Sync" class="p-sm text-on-surface-variant hover:bg-surface-container-highest/20 transition-all rounded-full">
+<span class="material-symbols-outlined">sync</span>
+</button>
+<button aria-label="Help" class="p-sm text-on-surface-variant hover:bg-surface-container-highest/20 transition-all rounded-full">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</nav>
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex flex-col h-full w-[280px] bg-surface-container-low border-r border-outline-variant/10 p-md overflow-y-auto shrink-0 z-30">
+<!-- Brand Header -->
+<div class="mb-xl px-sm py-md">
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">LuuPass</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-xs">Secure Vault</p>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-1 space-y-sm">
+<!-- Active Tab -->
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container rounded-lg border-l-2 border-primary scale-[0.98] transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-label-md text-label-md">All Items</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">star</span>
+<span class="font-label-md text-label-md">Favorites</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="font-label-md text-label-md">Folders</span>
+</a>
+</nav>
+<!-- CTA & Bottom Actions -->
+<div class="mt-auto space-y-md pt-lg border-t border-outline-variant/10">
+<button class="w-full flex items-center justify-center gap-sm px-md py-sm bg-primary-container text-on-primary-container font-label-md text-label-md rounded-lg btn-glow transition-all">
+<span class="material-symbols-outlined">add</span>
+                Add New Item
+            </button>
+<div class="space-y-sm pt-sm">
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-error hover:bg-error-container/10 rounded-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined">lock</span>
+<span class="font-label-md text-label-md">Lock Vault</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Middle Column: Item List -->
+<section class="w-full md:w-[320px] lg:w-[380px] bg-surface border-r border-outline-variant/10 flex flex-col shrink-0">
+<!-- Search Header -->
+<div class="p-md border-b border-outline-variant/10 bg-surface-container-lowest/50 backdrop-blur-sm sticky top-0 z-20">
+<div class="relative flex items-center bg-surface-container-low rounded-full border border-outline-variant/20 input-glow transition-all">
+<span class="material-symbols-outlined absolute left-sm text-on-surface-variant">search</span>
+<input class="w-full bg-transparent border-none text-on-surface placeholder:text-on-surface-variant focus:ring-0 pl-[40px] pr-md py-sm rounded-full font-body-sm text-body-sm h-10" placeholder="Search..." type="text"/>
+</div>
+</div>
+<!-- List Items -->
+<div class="flex-1 overflow-y-auto p-sm space-y-xs">
+<!-- Item 1 (Selected) -->
+<button class="w-full text-left flex items-center gap-md p-md rounded-lg bg-surface-container-high border border-outline-variant/20 relative group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-lg"></div>
+<div class="w-10 h-10 rounded-full bg-[#1da1f2]/20 flex items-center justify-center shrink-0 border border-[#1da1f2]/30">
+<span class="font-headline-md text-headline-md font-bold text-[#1da1f2]">T</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-label-md text-label-md text-on-surface truncate">Twitter / X</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate mt-xs">2 accounts</p>
+</div>
+</button>
+<!-- Item 2 -->
+<button class="w-full text-left flex items-center gap-md p-md rounded-lg hover:bg-surface-container-low border border-transparent hover:border-outline-variant/10 transition-colors group">
+<div class="w-10 h-10 rounded-full bg-[#ea4335]/20 flex items-center justify-center shrink-0 border border-[#ea4335]/30">
+<span class="font-headline-md text-headline-md font-bold text-[#ea4335]">G</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-label-md text-label-md text-on-surface truncate">Google</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate mt-xs">1 account</p>
+</div>
+</button>
+<!-- Item 3 -->
+<button class="w-full text-left flex items-center gap-md p-md rounded-lg hover:bg-surface-container-low border border-transparent hover:border-outline-variant/10 transition-colors group">
+<div class="w-10 h-10 rounded-full bg-[#e50914]/20 flex items-center justify-center shrink-0 border border-[#e50914]/30">
+<span class="font-headline-md text-headline-md font-bold text-[#e50914]">N</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-label-md text-label-md text-on-surface truncate">Netflix</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate mt-xs">1 account</p>
+</div>
+</button>
+<!-- Item 4 -->
+<button class="w-full text-left flex items-center gap-md p-md rounded-lg hover:bg-surface-container-low border border-transparent hover:border-outline-variant/10 transition-colors group">
+<div class="w-10 h-10 rounded-full bg-[#0061ff]/20 flex items-center justify-center shrink-0 border border-[#0061ff]/30">
+<span class="font-headline-md text-headline-md font-bold text-[#0061ff]">D</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-label-md text-label-md text-on-surface truncate">Dropbox</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate mt-xs">3 accounts</p>
+</div>
+</button>
+</div>
+</section>
+<!-- Right Column: Main Detail View -->
+<main class="flex-1 bg-surface-container-lowest overflow-y-auto hidden md:block">
+<div class="max-w-[800px] mx-auto p-xl">
+<!-- Detail Header Area -->
+<header class="flex justify-between items-start mb-lg">
+<div class="flex items-center gap-lg">
+<div class="w-16 h-16 rounded-xl bg-[#1da1f2]/20 flex items-center justify-center shrink-0 border border-[#1da1f2]/30 shadow-lg">
+<span class="font-display-lg text-display-lg font-bold text-[#1da1f2]">T</span>
+</div>
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-bold">Twitter / X</h2>
+<a class="flex items-center gap-xs font-body-sm text-body-sm text-primary hover:text-primary-fixed transition-colors mt-xs w-fit" href="https://twitter.com" target="_blank">
+                            twitter.com
+                            <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+</div>
+</div>
+<div class="flex gap-sm">
+<button aria-label="Favorite" class="p-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors border border-transparent hover:border-outline-variant/20">
+<span class="material-symbols-outlined">star</span>
+</button>
+<button aria-label="Delete Platform" class="p-sm text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-lg transition-colors border border-transparent hover:border-error/20">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</header>
+<!-- Main Editing Card -->
+<div class="glass-panel rounded-xl p-lg space-y-xl relative overflow-hidden">
+<!-- Subtle background decoration -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+<!-- Platform Details -->
+<section class="space-y-md">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant block pl-xs">Platform Name</label>
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-lg input-glow transition-all flex items-center">
+<input class="w-full bg-transparent border-none text-on-surface focus:ring-0 px-md py-sm h-12 font-body-md text-body-md rounded-lg" type="text" value="Twitter / X"/>
+</div>
+</div>
+<div class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant block pl-xs">Website URL</label>
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-lg input-glow transition-all flex items-center">
+<input class="w-full bg-transparent border-none text-on-surface focus:ring-0 px-md py-sm h-12 font-body-md text-body-md rounded-lg" type="url" value="https://twitter.com"/>
+</div>
+</div>
+</div>
+</section>
+<hr class="border-outline-variant/10"/>
+<!-- Accounts List -->
+<section class="space-y-lg">
+<div class="flex justify-between items-center">
+<h3 class="font-label-md text-label-md text-on-surface font-semibold tracking-wide">ACCOUNTS</h3>
+<span class="bg-surface-container-high text-on-surface-variant px-sm py-xs rounded text-[12px] font-bold">2 ITEMS</span>
+</div>
+<!-- Account Card 1 -->
+<div class="bg-surface-container border border-outline-variant/10 rounded-lg p-md space-y-md relative group hover:border-outline-variant/30 transition-colors">
+<div class="absolute top-md right-md opacity-0 group-hover:opacity-100 transition-opacity">
+<button aria-label="Remove Account" class="text-error hover:bg-error-container/10 p-xs rounded transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="space-y-xs pr-lg">
+<label class="font-label-md text-label-md text-on-surface-variant block pl-xs">Username / Email</label>
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-lg input-glow transition-all flex items-center">
+<input class="w-full bg-transparent border-none text-on-surface font-code-md text-code-md focus:ring-0 px-md py-sm h-12 rounded-l-lg" type="text" value="luupass_admin"/>
+<button aria-label="Copy Username" class="px-md text-on-surface-variant hover:text-primary transition-colors border-l border-outline-variant/20 h-full flex items-center">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+<div class="space-y-xs pr-lg">
+<label class="font-label-md text-label-md text-on-surface-variant block pl-xs">Password</label>
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-lg input-glow transition-all flex items-center">
+<input class="w-full bg-transparent border-none text-on-surface font-code-md text-code-md focus:ring-0 px-md py-sm h-12 rounded-l-lg tracking-widest" type="password" value="SuperSecretP@ssw0rd!"/>
+<div class="flex items-center h-full border-l border-outline-variant/20">
+<button aria-label="Toggle Visibility" class="px-sm text-on-surface-variant hover:text-on-surface transition-colors h-full flex items-center">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+<button aria-label="Copy Password" class="px-sm pr-md text-on-surface-variant hover:text-primary transition-colors h-full flex items-center">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Account Card 2 -->
+<div class="bg-surface-container border border-outline-variant/10 rounded-lg p-md space-y-md relative group hover:border-outline-variant/30 transition-colors">
+<div class="absolute top-md right-md opacity-0 group-hover:opacity-100 transition-opacity">
+<button aria-label="Remove Account" class="text-error hover:bg-error-container/10 p-xs rounded transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="space-y-xs pr-lg">
+<label class="font-label-md text-label-md text-on-surface-variant block pl-xs">Username / Email</label>
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-lg input-glow transition-all flex items-center">
+<input class="w-full bg-transparent border-none text-on-surface font-code-md text-code-md focus:ring-0 px-md py-sm h-12 rounded-l-lg" type="text" value="personal@example.com"/>
+<button aria-label="Copy Username" class="px-md text-on-surface-variant hover:text-primary transition-colors border-l border-outline-variant/20 h-full flex items-center">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+<div class="space-y-xs pr-lg">
+<label class="font-label-md text-label-md text-on-surface-variant block pl-xs">Password</label>
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-lg input-glow transition-all flex items-center">
+<input class="w-full bg-transparent border-none text-on-surface font-code-md text-code-md focus:ring-0 px-md py-sm h-12 rounded-l-lg tracking-widest" type="password" value="AnotherP@ss123"/>
+<div class="flex items-center h-full border-l border-outline-variant/20">
+<button aria-label="Toggle Visibility" class="px-sm text-on-surface-variant hover:text-on-surface transition-colors h-full flex items-center">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+<button aria-label="Copy Password" class="px-sm pr-md text-on-surface-variant hover:text-primary transition-colors h-full flex items-center">
+<span class="material-symbols-outlined text-[20px]">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Add Account Button -->
+<button class="w-full border border-dashed border-outline-variant/30 rounded-lg p-sm flex items-center justify-center gap-sm text-on-surface-variant hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all font-label-md text-label-md">
+<span class="material-symbols-outlined">add</span>
+                        Add Another Account
+                    </button>
+</section>
+<hr class="border-outline-variant/10"/>
+<!-- Notes Section -->
+<section class="space-y-xs">
+<label class="font-label-md text-label-md text-on-surface-variant block pl-xs">Secure Notes</label>
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-lg input-glow transition-all p-xs">
+<textarea class="w-full bg-transparent border-none text-on-surface focus:ring-0 p-sm resize-y font-body-sm text-body-sm rounded" placeholder="Add any recovery codes or security questions here..." rows="3"></textarea>
+</div>
+</section>
+</div>
+<!-- Global Actions -->
+<div class="mt-lg flex justify-end gap-md">
+<button class="px-xl py-sm rounded-lg border border-outline-variant/30 text-on-surface hover:bg-surface-container-high transition-colors font-label-md text-label-md">
+                    Cancel
+                </button>
+<button class="px-xl py-sm rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-fixed btn-glow transition-all font-label-md text-label-md shadow-[0_0_15px_rgba(190,194,255,0.2)]">
+                    Save Changes
+                </button>
+</div>
+</div>
+</main>
+</body></html>
