@@ -76,6 +76,22 @@ def test_import_valid_vault_replaces_current_vault(tmp_path):
         storage.load("current-pass")
 
 
+def test_import_vault_payload_replaces_current_vault(tmp_path):
+    vault_path = tmp_path / "vault.luupass"
+    import_path = tmp_path / "import.luupass"
+    storage = make_storage(vault_path)
+    import_storage = make_storage(import_path)
+
+    storage.save(Vault(entries=[Entry(title="Current")]), "current-pass")
+    import_storage.save(Vault(entries=[Entry(title="ImportedPayload")]), "import-pass")
+
+    imported_vault = storage.import_vault_payload(import_path.read_bytes(), "import-pass")
+
+    assert imported_vault.entries[0].title == "ImportedPayload"
+    assert vault_path.read_bytes().startswith(A2G1_MAGIC)
+    assert storage.load("import-pass").entries[0].title == "ImportedPayload"
+
+
 def test_import_wrong_password_does_not_overwrite_current_vault(tmp_path):
     vault_path = tmp_path / "vault.luupass"
     import_path = tmp_path / "import.luupass"

@@ -1,4 +1,5 @@
 import hashlib
+import inspect
 import os
 import platform
 import shutil
@@ -59,6 +60,11 @@ def flet_button(content, **kwargs):
     return ft.ElevatedButton(content, **kwargs)
 
 
+def file_type_custom():
+    picker_type = getattr(ft, "FilePickerFileType", None)
+    return picker_type.CUSTOM if picker_type else None
+
+
 def default_export_dir():
     if "android" in platform.platform().lower():
         return "/storage/emulated/0/Download"
@@ -66,7 +72,7 @@ def default_export_dir():
 
 
 class Dashboard(ft.Container):
-    def __init__(self, vault: Vault, vault_filepath, on_save, on_lock, on_change_password, on_import_vault):
+    def __init__(self, vault: Vault, vault_filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload=None):
         super().__init__(expand=True, bgcolor=BG)
         self.vault = vault
         self.vault_filepath = vault_filepath
@@ -74,27 +80,46 @@ class Dashboard(ft.Container):
         self.on_lock = on_lock
         self.on_change_password = on_change_password
         self.on_import_vault = on_import_vault
+        self.on_import_vault_payload = on_import_vault_payload
 
         self.selected_entry = None
         self.show_settings = False
         self.search_query = ""
         self.pending_import_path = None
+        self.pending_import_payload = None
         self.export_dir = default_export_dir()
         self.export_path_field = None
         self.clipboard_clear_timer = None
         self.is_mobile = False
 
-        self.export_picker = ft.FilePicker(on_result=self.export_result)
-        self.export_folder_picker = ft.FilePicker(on_result=self.export_folder_result)
-        self.import_picker = ft.FilePicker(on_result=self.import_result)
+        self.export_picker = self.create_file_picker(self.export_result)
+        self.export_folder_picker = self.create_file_picker(self.export_folder_result)
+        self.import_picker = self.create_file_picker(self.import_result)
 
         self.content = ft.Container(expand=True, bgcolor=BG)
 
     def did_mount(self):
-        self.page.overlay.extend([self.export_picker, self.export_folder_picker, self.import_picker])
+        if self.uses_legacy_file_picker():
+            self.page.overlay.extend([self.export_picker, self.export_folder_picker, self.import_picker])
         self.page.on_resize = self.handle_resize
         self.page.bgcolor = BG
         self.handle_resize()
+
+    def create_file_picker(self, handler):
+        picker = ft.FilePicker()
+        try:
+            picker.on_result = handler
+        except Exception:
+            pass
+        return picker
+
+    async def maybe_await(self, value):
+        if inspect.isawaitable(value):
+            return await value
+        return value
+
+    def uses_legacy_file_picker(self):
+        return not inspect.iscoroutinefunction(self.import_picker.pick_files)
 
     def show_snack(self, message, bgcolor=None):
         snack_bar = ft.SnackBar(ft.Text(message), bgcolor=bgcolor)
@@ -566,17 +591,8 @@ class Dashboard(ft.Container):
             on_click=self.choose_export_folder,
         )
         export_to_folder_btn = flet_button("Export to Folder", icon=ICONS.DOWNLOAD, on_click=self.export_to_path)
-        save_as_btn = flet_button(
-            "Save As...",
-            icon=ICONS.SAVE,
-            on_click=lambda e: self.export_picker.save_file(
-                dialog_title="Export Vault",
-                file_name="vault_backup.luupass",
-                initial_directory=self.export_dir,
-                allowed_extensions=["luupass"],
-            ) if not getattr(self.page, "web", False) else self.show_web_filepicker_notice(),
-        )
-        import_btn = flet_button("Import Vault", icon=ICONS.UPLOAD, on_click=lambda e: self.import_picker.pick_files(allowed_extensions=["luupass"]))
+        save_as_btn = flet_button("Save As...", icon=ICONS.SAVE, on_click=self.save_as_export)
+        import_btn = flet_button("Import Vault", icon=ICONS.UPLOAD, on_click=self.pick_import_vault)
         change_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
 
         def change_pass_clicked(e):
@@ -665,13 +681,60 @@ class Dashboard(ft.Container):
     def on_export_dir_change(self, e):
         self.export_dir = e.control.value
 
-    def choose_export_folder(self, e):
+    async def choose_export_folder(self, e):
         if getattr(self.page, "web", False):
             self.show_web_filepicker_notice()
             if self.export_path_field and getattr(self.export_path_field, "page", None):
                 self.export_path_field.focus()
             return
-        self.export_folder_picker.get_directory_path(dialog_title="Choose Export Folder", initial_directory=self.export_dir or default_export_dir())
+        result = await self.maybe_await(
+            self.export_folder_picker.get_directory_path(
+                dialog_title="Choose Export Folder",
+                initial_directory=self.export_dir or default_export_dir(),
+            )
+        )
+        if result is not None:
+            self.export_folder_result(result)
+
+    async def save_as_export(self, e):
+        picker_type = file_type_custom()
+        kwargs = {
+            "dialog_title": "Export Vault",
+            "file_name": "vault_backup.luupass",
+            "allowed_extensions": ["luupass"],
+        }
+        if picker_type:
+            kwargs["file_type"] = picker_type
+
+        if getattr(self.page, "web", False):
+            try:
+                with open(self.vault_filepath, "rb") as f:
+                    kwargs["src_bytes"] = f.read()
+            except Exception as ex:
+                self.show_snack(f"Export Error: {ex}", bgcolor=ERROR)
+                return
+        else:
+            kwargs["initial_directory"] = self.export_dir
+
+        result = await self.maybe_await(self.export_picker.save_file(**kwargs))
+        if result is not None:
+            self.export_result(result)
+
+    async def pick_import_vault(self, e):
+        picker_type = file_type_custom()
+        kwargs = {
+            "allowed_extensions": ["luupass"],
+            "allow_multiple": False,
+        }
+        if picker_type:
+            kwargs["file_type"] = picker_type
+
+        if getattr(self.page, "web", False):
+            kwargs["with_data"] = True
+
+        result = await self.maybe_await(self.import_picker.pick_files(**kwargs))
+        if result is not None:
+            self.import_result(result)
 
     def show_web_filepicker_notice(self):
         self.show_snack("Browser mode cannot choose local folders. Enter a local path manually or run desktop mode.", bgcolor=COLORS.ERROR)
@@ -693,23 +756,31 @@ class Dashboard(ft.Container):
             self.show_snack(f"Export Error: {ex}", bgcolor=ERROR)
 
     def export_result(self, e):
-        if e.path:
+        path = e if isinstance(e, str) else getattr(e, "path", None)
+        if path:
             try:
-                shutil.copy(self.vault_filepath, e.path)
+                shutil.copy(self.vault_filepath, path)
                 self.show_snack("Vault Exported Successfully!", bgcolor=SUCCESS)
             except Exception as ex:
                 self.show_snack(f"Export Error: {ex}", bgcolor=ERROR)
 
     def export_folder_result(self, e):
-        if e.path:
-            self.export_dir = e.path
+        path = e if isinstance(e, str) else getattr(e, "path", None)
+        if path:
+            self.export_dir = path
             if self.export_path_field:
-                self.export_path_field.value = e.path
+                self.export_path_field.value = path
                 self.export_path_field.update()
 
     def import_result(self, e):
-        if e.files and len(e.files) > 0:
-            self.pending_import_path = e.files[0].path
+        files = e if isinstance(e, list) else getattr(e, "files", None)
+        if files and len(files) > 0:
+            selected = files[0]
+            self.pending_import_path = getattr(selected, "path", None)
+            self.pending_import_payload = getattr(selected, "bytes", None)
+            if not self.pending_import_path and not self.pending_import_payload:
+                self.show_snack("Selected vault has no readable path/data in this mode.", bgcolor=ERROR)
+                return
             self.open_import_password_dialog()
 
     def open_import_password_dialog(self):
@@ -717,6 +788,7 @@ class Dashboard(ft.Container):
 
         def close_dialog(e=None):
             self.pending_import_path = None
+            self.pending_import_payload = None
             self.close_dialog(dialog)
 
         def confirm_import(e=None):
@@ -724,9 +796,15 @@ class Dashboard(ft.Container):
                 self.show_snack("Please enter the import vault password.", bgcolor=ERROR)
                 return
             try:
-                self.on_import_vault(self.pending_import_path, password_field.value)
+                if self.pending_import_payload is not None:
+                    if not self.on_import_vault_payload:
+                        raise ValueError("Import payload handler is not configured.")
+                    self.on_import_vault_payload(self.pending_import_payload, password_field.value)
+                else:
+                    self.on_import_vault(self.pending_import_path, password_field.value)
                 password_field.value = ""
                 self.pending_import_path = None
+                self.pending_import_payload = None
                 self.close_dialog(dialog)
                 self.on_lock()
             except Exception as ex:

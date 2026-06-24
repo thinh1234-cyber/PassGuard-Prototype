@@ -64,8 +64,23 @@ class VaultStorage:
         except Exception as e:
             raise ValueError("File import không hợp lệ hoặc mật khẩu import sai.") from e
 
+    def validate_import_payload(self, payload: bytes, password: str) -> Vault:
+        if not payload:
+            raise ValueError("File vault import đang rỗng.")
+
+        try:
+            decrypted_data = self.crypto.decrypt(payload, password)
+            return Vault.model_validate_json(decrypted_data.decode('utf-8'))
+        except Exception as e:
+            raise ValueError("File import không hợp lệ hoặc mật khẩu import sai.") from e
+
     def import_vault(self, import_path: str, password: str) -> Vault:
         imported_vault = self.validate_import_file(import_path, password)
+        self.save(imported_vault, password, keep_backups=False)
+        return imported_vault
+
+    def import_vault_payload(self, payload: bytes, password: str) -> Vault:
+        imported_vault = self.validate_import_payload(payload, password)
         self.save(imported_vault, password, keep_backups=False)
         return imported_vault
 

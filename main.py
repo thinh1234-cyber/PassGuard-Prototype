@@ -112,7 +112,10 @@ def main(page: ft.Page):
         def on_import_vault(import_path, import_password):
             return storage.import_vault(import_path, import_password)
 
-        dashboard = Dashboard(vault, storage.filepath, on_save, on_lock, on_change_password, on_import_vault)
+        def on_import_vault_payload(import_payload, import_password):
+            return storage.import_vault_payload(import_payload, import_password)
+
+        dashboard = Dashboard(vault, storage.filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload)
         page.add(dashboard)
 
     show_login()
