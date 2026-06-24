@@ -16,6 +16,16 @@ dist/
 *.luupass.bak*
 *.luupass.tmp
 
+# Local-only development notes / PRD / design references
+architecture.md
+update.md
+docs/
+stitch_modern_password_vault/
+prd/
+PRD.md
+prd.md
+*.prd.md
+
 # Environment
 .env
 venv/

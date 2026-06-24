@@ -1,73 +1,34 @@
-<div align="center">
+# LuuPass
 
-<img src="assets/icon.png" alt="Logo" width="120">
+LuuPass la password manager offline-first cho vault ca nhan. App luu du lieu trong mot file vault ma hoa cuc bo, khong can cloud server va khong tu dong dong bo qua Internet.
 
-# LuuPass Vault
+Repository public nay chi giu nhung file can thiet de chay, build va test project. Tai lieu phat trien noi bo nhu `architecture.md`, `update.md`, `docs/`, `stitch_modern_password_vault/` duoc giu local va ignore khoi Git.
 
-> Ứng dụng quản lý mật khẩu cá nhân Offline-first • An toàn • Không Cloud
+## Tinh nang chinh
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)]()
-[![Flet](https://img.shields.io/badge/UI-Flet-green.svg)]()
+- Ma hoa vault bang `Argon2id` + `AES-256-GCM` voi format moi `A2G1`.
+- Van doc duoc vault legacy `GCM1` va Fernet cu de tranh mat du lieu khi migrate.
+- Safe import: decrypt va parse file import thanh cong roi moi overwrite vault hien tai.
+- Atomic save, backup rotation va healing mode khi vault chinh hong hoac bi xoa.
+- Password generator offline, khong goi dich vu ngoai.
+- Auto-clear clipboard sau khi copy, idle auto-lock, lock va shutdown tu UI.
+- UI Flet cho desktop window va local web/mobile qua Termux.
+- Update check opt-in tu GitHub repo `thinh1234-cyber/luu_pass`, khong tu `git pull` hay tu chay code moi.
 
-[Features](#-tính-năng) • [Install](#-cài-đặt) • [Usage](#-hướng-dẫn-sử-dụng) • [Architecture](#-kiến-trúc) • [Security](#-giới-hạn-bảo-mật)
+## Cai dat
 
-</div>
+Yeu cau:
 
----
+- Python 3.10 tro len
+- Git neu muon dung update check bang remote HEAD/tag
 
-## 🎯 Tổng quan
-
-LuuPass là ứng dụng quản lý mật khẩu cá nhân theo hướng **offline-first**. Dữ liệu được lưu trong một file vault mã hóa cục bộ, hoàn toàn không cần cloud server và không đồng bộ tự động qua Internet.
-
-Dự án được thiết kế với mục tiêu bảo vệ dữ liệu *at-rest* bằng các tiêu chuẩn mã hóa mạnh nhất hiện nay, đảm bảo an toàn tối đa cho file vault của bạn khi đang ở trạng thái khóa.
-
----
-
-## ✨ Tính năng
-
-### 🔐 Cryptography & Security
-| Tính năng | Mô tả |
-|-----------|-------|
-| 🛡️ **A2G1 Format** | Mã hóa chuẩn `Argon2id` (KDF) + `AES-256-GCM` (AEAD). Payload header được authenticate bằng AAD. |
-| 🔄 **Backward Compat**| Vẫn hỗ trợ đọc vault legacy `GCM1` (PBKDF2-SHA256) và payload Fernet cũ. |
-| 🌐 **Local Web Security**| Chế độ `--web` bind riêng `127.0.0.1` với route token ngẫu nhiên (chống unauthorized access). |
-| 📋 **Auto-clear** | Copy username/password tự động xóa clipboard sau 15 giây; lock vault sẽ clear clipboard ngay. |
-| ⏱️ **Idle Auto-lock** | Tự lock vault sau thời gian không hoạt động, giảm rủi ro để quên session đang mở. |
-
-### 💾 Storage & Data Management
-| Tính năng | Mô tả |
-|-----------|-------|
-| ⚡ **Safe Save** | Ghi dữ liệu ra `.tmp` trước khi atomic replace file vault chính, chống hỏng file khi mất điện. |
-| 🏥 **Healing Mode** | Auto rotate tối đa 3 bản backup (`.bak`). Tự động khôi phục từ backup nếu vault chính bị hỏng/xóa. |
-| 📥 **Safe Import** | Yêu cầu password của file import để validate trước khi ghi đè vault hiện tại. Tự động re-encrypt. |
-| 🩺 **Backup Diagnostics** | Settings có kiểm tra backup valid/corrupt/missing bằng password session hiện tại. |
-
-### 🎨 Core UI (Flet)
-| Tính năng | Mô tả |
-|-----------|-------|
-| 🔍 **Instant Search** | Tìm kiếm realtime theo platform, URL hoặc username. |
-| 🧬 **Password Generator** | Sinh password offline cho từng account, tránh phụ thuộc dịch vụ bên ngoài. |
-| 🖼️ **Offline Favicon** | Tự động sinh icon dựa trên tên nền tảng, không gọi API ngoài (chống tracking). |
-| 📱 **Cross-platform** | Chạy mượt mà trên Windows (.exe), Web Local, và Android (Termux). |
-
----
-
-## 📦 Cài đặt
-
-### Windows Portable
-1. Mở thư mục `dist/`.
-2. Chạy `LuuPass.exe` (Mở như một cửa sổ desktop độc lập).
-> **Build lại bản Windows:** Chạy lệnh `.\build.ps1 -Windows` trong PowerShell.
-
-### Chạy từ Source (Windows/Linux/macOS)
 ```bash
 pip install -r requirements.txt
 python main.py
 ```
 
-### Android (thông qua Termux)
+## Chay tren Android Termux
+
 ```bash
 pkg update && pkg upgrade
 pkg install python git
@@ -76,89 +37,106 @@ cd luu_pass
 pip install -r requirements.txt
 python main.py --web
 ```
-*Khi chạy `--web`, terminal sẽ in ra link local dạng `http://127.0.0.1:8550/<token>`. Nên mở link này trong tab Ẩn danh (Incognito) của trình duyệt mobile.*
 
----
+Khi chay `--web`, app bind vao `127.0.0.1` va in ra URL co token, vi du:
 
-## 📖 Hướng dẫn sử dụng
+```text
+http://127.0.0.1:8550/<token>
+```
 
-### Quản lý Dữ liệu
-- **File vault mặc định:** `vault.luupass`.
-- **Backup local:** `vault.luupass.bak1`, `.bak2`, `.bak3`.
-- **Export:** Copy chính xác file vault hiện tại ra vị trí bạn chọn (hỗ trợ Folder Picker trên desktop).
-- **Import:** Nhập file vault `.luupass` khác. Hệ thống sẽ hỏi password của file import, validate trước, rotate backup vault hiện tại rồi lưu vault import bằng master password đang unlock.
-- **Change master password:** Yêu cầu current password, new password và confirm password. App verify payload mới trước khi xóa backup cũ.
+Nen mo dung URL co token trong browser tren dien thoai. Import/export tren web mobile phu thuoc kha nang File Picker cua browser; neu folder picker khong kha dung, hay dung o `Export Folder Path` de nhap path tren filesystem Termux.
 
-### Git Hygiene
-Vault và backup không bao giờ nên commit lên Git. `.gitignore` đã cấu hình chặn:
+## Cach dung nhanh
+
+1. Chay app va nhap master password de unlock hoac tao vault moi.
+2. Tao entry, them account, username/password va notes neu can.
+3. Bam save trong dashboard de ghi vault.
+4. Dung Settings de export/import vault, doi master password, verify backups hoac check update.
+5. Dung Lock Vault khi roi may; dung Shutdown neu muon dong app/server local.
+
+File vault mac dinh:
+
+```text
+vault.luupass
+```
+
+Backup mac dinh:
+
+```text
+vault.luupass.bak1
+vault.luupass.bak2
+vault.luupass.bak3
+```
+
+## Bao mat
+
+LuuPass bao ve manh nhat khi vault dang khoa. Neu file `vault.luupass` bi copy, attacker van phai vuot qua Argon2id va AES-GCM.
+
+Khi vault da unlock, plaintext password ton tai trong RAM/UI de app co the hien thi, sua va copy. Neu may dang nghi nhiem infostealer, keylogger, clipboard monitor, screen capture hoac malware doc RAM, khong nen unlock vault that tren may do. Hay lam sach he dieu hanh hoac dung thiet bi tin cay hon truoc.
+
+Vault va backup khong bao gio nen commit len Git. `.gitignore` da chan:
+
 ```gitignore
 *.luupass
 *.luupass.bak*
 *.luupass.tmp
 ```
-> ⚠️ **Cảnh báo:** Nếu `vault.luupass` từng bị commit/push lên remote, hãy coi ciphertext đã bị lộ và nên đổi master password ngay lập tức, hoặc purge Git history.
 
-### Update Check & Release Integrity
-Update check phải là thao tác **opt-in** của user. Module `src/update_checker.py` mặc định đọc tag version bằng `git ls-remote --tags --refs https://github.com/thinh1234-cyber/luu_pass.git`, parse version tag, và so sánh với `APP_VERSION`. Nếu repo chưa có tag version, app fallback sang so sánh `remote HEAD` với `local HEAD`. App không tự `git pull`, tự cài, hoặc chạy code từ Internet.
+Neu vault tung bi commit/push len remote, hay coi ciphertext da lo va nen doi master password, tao vault moi, hoac purge Git history neu can.
 
-Khi tải release thủ công, dùng file `SHA256SUMS` đi kèm release để kiểm tra artifact local trước khi chạy:
-```python
-from src.update_checker import parse_sha256sums, sha256_file
+## Update
 
-checksums = parse_sha256sums(sha256sums_text)
-assert sha256_file("LuuPass.exe") == checksums["LuuPass.exe"]
+Nut `Check Updates` trong Settings dung module `src/update_checker.py`.
+
+- Uu tien doc version tag tu `https://github.com/thinh1234-cyber/luu_pass.git`.
+- Neu repo chua co tag version, fallback sang so sanh remote HEAD voi local HEAD.
+- Khong tu cai dat, khong tu pull code moi, khong chay file tai ve.
+- Helper SHA256 co san de verify artifact release thu cong.
+
+## Cau truc project public
+
+```text
+.
+|-- main.py
+|-- requirements.txt
+|-- build.ps1
+|-- src/
+|   |-- crypto.py
+|   |-- models.py
+|   |-- passwords.py
+|   |-- storage.py
+|   |-- update_checker.py
+|   |-- version.py
+|   `-- ui/
+|       `-- dashboard.py
+`-- tests/
+    |-- test_advanced_crypto.py
+    |-- test_crypto.py
+    |-- test_models.py
+    |-- test_passwords.py
+    |-- test_storage.py
+    `-- test_update_checker.py
 ```
 
----
+Local-only development notes are ignored by Git:
 
-## 🏗 Kiến trúc
-
-### Cấu trúc thư mục
-```
-├── src/
-│   ├── models.py         # Pydantic data models (Vault, Entry, Account)
-│   ├── crypto.py         # KDF (Argon2id) & Encryption (AES-GCM) engine
-│   ├── storage.py        # File I/O, Atomic Save & Healing Mode
-│   └── ui/
-│       └── dashboard.py  # Flet UI Components & State management
-├── tests/
-│   └── test_storage.py   # Pytest suite cho Storage & Crypto
-├── main.py               # Entry point & Local Web Server binding
-├── build.ps1             # Script build file executable (Windows)
-├── architecture.md       # Tài liệu thiết kế hệ thống chi tiết
-└── requirements.txt      # Dependencies
+```text
+architecture.md
+update.md
+docs/
+stitch_modern_password_vault/
 ```
 
----
+## Test
 
-## 🔧 Công nghệ
-
-| Layer | Technology |
-|-------|------------|
-| **UI Framework** | Flet `0.85.3` (Flutter-based Python UI) |
-| **Data Validation**| Pydantic v2 |
-| **Cryptography** | `cryptography` (AES-GCM), `argon2-cffi` (Argon2id) |
-| **Testing** | Pytest |
-
----
-
-## 🛡️ Giới hạn bảo mật
-
-LuuPass bảo vệ cực tốt khi file vault đang **khóa**. 
-Khi vault đã được **unlock**, plaintext password sẽ tồn tại trong RAM/UI để phục vụ việc xem, sửa và copy. 
-
-Vì vậy, nếu máy tính bị nghi nhiễm malware (infostealer, keylogger, screen capture, clipboard monitor), cách an toàn nhất là làm sạch HĐH hoặc sử dụng thiết bị khác an toàn hơn trước khi unlock vault.
-
----
-
-## ✅ Verification
-Chạy Unit Test để verify toàn bộ module mã hóa và lưu trữ:
 ```bash
 python -m pytest -q
 ```
 
----
+## Build Windows
 
-<div align="center">
-<p>Made with ❤️ by <b>Kyle (Nguyễn Thịnh)</b></p>
-</div>
+```powershell
+.\build.ps1 -Windows
+```
+
+Build output se nam trong `dist/`.
