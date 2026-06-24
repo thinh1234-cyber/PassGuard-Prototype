@@ -157,6 +157,7 @@ class Dashboard(ft.Container):
         on_import_vault,
         on_import_vault_payload=None,
         on_verify_backups=None,
+        on_shutdown=None,
     ):
         super().__init__(expand=True, bgcolor=BG)
         self.vault = vault
@@ -167,6 +168,7 @@ class Dashboard(ft.Container):
         self.on_import_vault = on_import_vault
         self.on_import_vault_payload = on_import_vault_payload
         self.on_verify_backups = on_verify_backups
+        self.on_shutdown = on_shutdown
 
         self.selected_entry = None
         self.selected_entry_snapshot = None
@@ -449,6 +451,18 @@ class Dashboard(ft.Container):
 
         self.guard_dirty(lock_after_save, title="Lock Vault")
 
+    def shutdown_now(self):
+        self.clear_clipboard_now()
+        self.cancel_timers()
+        if self.on_shutdown:
+            self.on_shutdown()
+        else:
+            self.on_lock()
+
+    def request_shutdown(self, e=None):
+        self.record_activity()
+        self.guard_dirty(self.shutdown_now, title="Shutdown LuuPass")
+
     def filtered_entries(self):
         query = self.search_query.strip().lower()
         if not query:
@@ -571,6 +585,7 @@ class Dashboard(ft.Container):
                     self.text_button("Add Platform", ICONS.ADD, self.add_new_entry),
                     ft.Container(expand=True),
                     self.text_button("Settings", ICONS.SETTINGS, self.open_settings, selected=self.show_settings),
+                    self.text_button("Shutdown", icon_or("POWER_SETTINGS_NEW", icon_or("POWER", ICONS.CLOSE)), self.request_shutdown),
                     self.text_button("Lock Vault", ICONS.LOCK, self.request_lock),
                 ],
                 expand=True,
@@ -744,6 +759,7 @@ class Dashboard(ft.Container):
                             ft.IconButton(icon=ICONS.LIST, icon_color=PRIMARY, tooltip="Vault", on_click=lambda e: self.select_entry(None), width=56, height=48),
                             ft.Container(expand=True),
                             ft.IconButton(icon=ICONS.SETTINGS, icon_color=MUTED, tooltip="Settings", on_click=self.open_settings, width=56, height=48),
+                            ft.IconButton(icon=icon_or("POWER_SETTINGS_NEW", icon_or("POWER", ICONS.CLOSE)), icon_color=MUTED, tooltip="Shutdown", on_click=self.request_shutdown, width=56, height=48),
                         ],
                     ),
                 ),

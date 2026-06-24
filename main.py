@@ -1,8 +1,10 @@
 import flet as ft
 from src.storage import VaultStorage
 from src.ui.dashboard import Dashboard
+import os
 import secrets
 import sys
+import threading
 
 SESSION_TOKEN = secrets.token_urlsafe(16)
 COLORS = getattr(ft, "Colors", None) or getattr(ft, "colors")
@@ -135,14 +137,28 @@ def main(page: ft.Page):
                 raise ValueError("Current vault session is locked.")
             return storage.verify_backups(current_password[0])
 
-        dashboard = Dashboard(vault, storage.filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload, on_verify_backups)
+        def on_shutdown():
+            current_password[0] = None
+            page.controls.clear()
+            page.add(ft.Text("LuuPass has shut down.", color=COLORS.PRIMARY))
+            page.update()
+
+            window = getattr(page, "window", None)
+            if window and not page.web:
+                close_window = getattr(window, "destroy", None) or getattr(window, "close", None)
+                if close_window:
+                    close_window()
+                    return
+
+            threading.Timer(0.2, lambda: os._exit(0)).start()
+
+        dashboard = Dashboard(vault, storage.filepath, on_save, on_lock, on_change_password, on_import_vault, on_import_vault_payload, on_verify_backups, on_shutdown)
         page.add(dashboard)
 
     show_login()
 
 if __name__ == "__main__":
     if "--web" in sys.argv:
-        import threading
         import webbrowser
         import time
         
