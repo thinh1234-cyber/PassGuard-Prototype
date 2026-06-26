@@ -1,33 +1,108 @@
+<div align="center">
+
 # LuuPass
 
-LuuPass la password manager offline-first cho vault ca nhan. App luu du lieu trong mot file vault ma hoa cuc bo, khong can cloud server va khong tu dong dong bo qua Internet.
+> Password manager offline-first cho vault cá nhân được mã hóa cục bộ.
 
-Repository public nay chi giu nhung file can thiet de chay, build va test project. Tai lieu phat trien noi bo nhu `architecture.md`, `update.md`, `docs/`, `stitch_modern_password_vault/` duoc giu local va ignore khoi Git.
+Phiên bản 3.0.0 | Python 3.10+ | Flet UI | Local encrypted storage
 
-## Tinh nang chinh
+[Tính năng](#tính-năng) | [Cài đặt](#cài-đặt) | [Sử dụng](#sử-dụng) | [Bảo mật](#bảo-mật) | [Kiến trúc](#kiến-trúc) | [Build](#build)
 
-- Ma hoa vault bang `Argon2id` + `AES-256-GCM` voi format moi `A2G1`.
-- Van doc duoc vault legacy `GCM1` va Fernet cu de tranh mat du lieu khi migrate.
-- Safe import: decrypt va parse file import thanh cong roi moi overwrite vault hien tai.
-- Atomic save, backup rotation va healing mode khi vault chinh hong hoac bi xoa.
-- Password generator offline, khong goi dich vu ngoai.
-- Auto-clear clipboard sau khi copy, idle auto-lock, lock va shutdown tu UI.
-- UI Flet cho desktop window va local web/mobile qua Termux.
-- Update check opt-in tu GitHub repo `thinh1234-cyber/luu_pass`, khong tu `git pull` hay tu chay code moi.
+</div>
 
-## Cai dat
+---
 
-Yeu cau:
+## Tổng quan
 
-- Python 3.10 tro len
-- Git neu muon dung update check bang remote HEAD/tag
+LuuPass là ứng dụng quản lý mật khẩu nhẹ, ưu tiên sử dụng cục bộ. Dữ liệu được lưu trong một file vault đã mã hóa trên thiết bị, không cần cloud server và không tự động đồng bộ qua Internet.
+
+Ứng dụng hỗ trợ chế độ desktop và local web, phù hợp để chạy trên Windows hoặc Android Termux trong khi vault vẫn nằm dưới quyền kiểm soát của người dùng.
+
+---
+
+## Tính năng
+
+### Core
+
+| Tính năng | Mô tả |
+|-----------|-------|
+| Encrypted vault | Lưu dữ liệu trong file `.luupass` được mã hóa cục bộ. |
+| Multi-account entries | Lưu nhiều username/password trong cùng một platform hoặc service. |
+| Password generator | Tạo mật khẩu mạnh offline, không cần dịch vụ bên ngoài. |
+| Search | Tìm nhanh theo platform, URL hoặc username. |
+| Light/Dark mode | Đổi giao diện sáng/tối trong Settings. |
+
+### Security & Recovery
+
+| Tính năng | Mô tả |
+|-----------|-------|
+| Modern encryption | Vault mới dùng `Argon2id` để derive key và `AES-256-GCM` để mã hóa. |
+| Legacy vault support | Vẫn đọc được vault cũ định dạng `GCM1` và Fernet để hỗ trợ migration. |
+| Atomic save | Ghi vault qua file tạm trước khi thay thế file chính. |
+| Backup rotation | Giữ tối đa 3 file backup cục bộ để phục hồi. |
+| Healing mode | Tự thử phục hồi từ backup hợp lệ nếu vault chính bị mất hoặc hỏng. |
+| Clipboard auto-clear | Tự xóa dữ liệu đã copy sau một khoảng thời gian ngắn khi nền tảng hỗ trợ. |
+| Idle auto-lock | Tự khóa vault sau thời gian không hoạt động. |
+
+### Import, Export & Updates
+
+| Tính năng | Mô tả |
+|-----------|-------|
+| Export vault | Xuất bản backup đã mã hóa dạng `vault_backup.luupass`. |
+| Import vault | Validate vault import thành công rồi mới thay thế vault hiện tại. |
+| Change master password | Re-encrypt vault bằng master password mới. |
+| Backup diagnostics | Kiểm tra các backup slot còn đọc được hay không. |
+| Opt-in update check | Chỉ kiểm tra GitHub release/tag hoặc remote HEAD khi người dùng yêu cầu. |
+
+---
+
+## Cài đặt
+
+### Yêu cầu
+
+- Python 3.10 trở lên
+- Git, khuyến nghị dùng để clone project và check update
+
+### Setup
 
 ```bash
+git clone https://github.com/thinh1234-cyber/luu_pass.git
+cd luu_pass
 pip install -r requirements.txt
 python main.py
 ```
 
-## Chay tren Android Termux
+---
+
+## Sử dụng
+
+### Desktop Mode
+
+```bash
+python main.py
+```
+
+1. Nhập master password để mở vault hiện có hoặc tạo vault mới.
+2. Tạo platform entry, sau đó thêm một hoặc nhiều account.
+3. Save changes để ghi dữ liệu vào file vault đã mã hóa.
+4. Vào Settings để export/import vault, đổi master password, verify backups hoặc check updates.
+5. Dùng Lock Vault khi rời thiết bị, hoặc Shutdown để đóng app/server.
+
+### Local Web Mode
+
+```bash
+python main.py --web
+```
+
+Ứng dụng bind vào `127.0.0.1` và in ra local URL có token, ví dụ:
+
+```text
+http://127.0.0.1:8550/<token>
+```
+
+Hãy mở đúng URL được in trong terminal. Import/export trên browser phụ thuộc vào khả năng file picker của trình duyệt và nền tảng đang dùng.
+
+### Android Termux
 
 ```bash
 pkg update && pkg upgrade
@@ -38,43 +113,15 @@ pip install -r requirements.txt
 python main.py --web
 ```
 
-Khi chay `--web`, app bind vao `127.0.0.1` va in ra URL co token, vi du:
+---
 
-```text
-http://127.0.0.1:8550/<token>
-```
+## Bảo mật
 
-Nen mo dung URL co token trong browser tren dien thoai. Import/export tren web mobile phu thuoc kha nang File Picker cua browser; neu folder picker khong kha dung, hay dung o `Export Folder Path` de nhap path tren filesystem Termux.
+LuuPass bảo vệ dữ liệu mạnh nhất khi vault đang khóa. Nếu file `vault.luupass` bị sao chép, attacker vẫn cần master password để giải mã dữ liệu.
 
-## Cach dung nhanh
+Khi vault đã unlock, plaintext credentials có thể tồn tại trong RAM, UI state và clipboard state để app có thể hiển thị, chỉnh sửa và copy. Không nên unlock vault thật trên thiết bị nghi nhiễm keylogger, clipboard monitor, screen capture malware hoặc malware có khả năng đọc memory.
 
-1. Chay app va nhap master password de unlock hoac tao vault moi.
-2. Tao entry, them account, username/password va notes neu can.
-3. Bam save trong dashboard de ghi vault.
-4. Dung Settings de export/import vault, doi master password, verify backups hoac check update.
-5. Dung Lock Vault khi roi may; dung Shutdown neu muon dong app/server local.
-
-File vault mac dinh:
-
-```text
-vault.luupass
-```
-
-Backup mac dinh:
-
-```text
-vault.luupass.bak1
-vault.luupass.bak2
-vault.luupass.bak3
-```
-
-## Bao mat
-
-LuuPass bao ve manh nhat khi vault dang khoa. Neu file `vault.luupass` bi copy, attacker van phai vuot qua Argon2id va AES-GCM.
-
-Khi vault da unlock, plaintext password ton tai trong RAM/UI de app co the hien thi, sua va copy. Neu may dang nghi nhiem infostealer, keylogger, clipboard monitor, screen capture hoac malware doc RAM, khong nen unlock vault that tren may do. Hay lam sach he dieu hanh hoac dung thiet bi tin cay hon truoc.
-
-Vault va backup khong bao gio nen commit len Git. `.gitignore` da chan:
+Vault và backup không nên commit lên Git:
 
 ```gitignore
 *.luupass
@@ -82,18 +129,20 @@ Vault va backup khong bao gio nen commit len Git. `.gitignore` da chan:
 *.luupass.tmp
 ```
 
-Neu vault tung bi commit/push len remote, hay coi ciphertext da lo va nen doi master password, tao vault moi, hoac purge Git history neu can.
+File vault mặc định:
 
-## Update
+```text
+vault.luupass
+vault.luupass.bak1
+vault.luupass.bak2
+vault.luupass.bak3
+```
 
-Nut `Check Updates` trong Settings dung module `src/update_checker.py`.
+---
 
-- Uu tien doc version tag tu `https://github.com/thinh1234-cyber/luu_pass.git`.
-- Neu repo chua co tag version, fallback sang so sanh remote HEAD voi local HEAD.
-- Khong tu cai dat, khong tu pull code moi, khong chay file tai ve.
-- Helper SHA256 co san de verify artifact release thu cong.
+## Kiến trúc
 
-## Cau truc project public
+### Cấu trúc project
 
 ```text
 .
@@ -118,14 +167,19 @@ Nut `Check Updates` trong Settings dung module `src/update_checker.py`.
     `-- test_update_checker.py
 ```
 
-Local-only development notes are ignored by Git:
+### Công nghệ
 
-```text
-architecture.md
-update.md
-docs/
-stitch_modern_password_vault/
-```
+| Layer | Technology |
+|-------|------------|
+| UI | Flet |
+| Runtime | Python |
+| Models | Pydantic |
+| Key derivation | Argon2id |
+| Encryption | AES-256-GCM |
+| Storage | Local encrypted vault file |
+| Tests | Pytest |
+
+---
 
 ## Test
 
@@ -133,10 +187,14 @@ stitch_modern_password_vault/
 python -m pytest -q
 ```
 
-## Build Windows
+---
+
+## Build
+
+### Windows
 
 ```powershell
 .\build.ps1 -Windows
 ```
 
-Build output se nam trong `dist/`.
+Build output nằm trong `dist/`.
