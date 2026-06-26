@@ -179,12 +179,6 @@ vault.luupass.bak3
 | Storage | Local encrypted vault file |
 | Tests | Pytest |
 
-## 📝 License
-
-MIT — Xem [LICENSE](LICENSE)
-
----
-
 <div align="center">
 <p>Made with ❤️ by <b>Nguyễn Thịnh - Kyle</b></p>
 </div>
