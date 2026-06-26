@@ -179,22 +179,12 @@ vault.luupass.bak3
 | Storage | Local encrypted vault file |
 | Tests | Pytest |
 
----
+## 📝 License
 
-## Test
-
-```bash
-python -m pytest -q
-```
+MIT — Xem [LICENSE](LICENSE)
 
 ---
 
-## Build
-
-### Windows
-
-```powershell
-.\build.ps1 -Windows
-```
-
-Build output nằm trong `dist/`.
+<div align="center">
+<p>Made with ❤️ by <b>Nguyễn Thịnh - Kyle</b></p>
+</div>
