@@ -26,9 +26,9 @@ from src.version import APP_METADATA, APP_VERSION
 
 def test_app_version_metadata_is_defined():
     assert APP_VERSION == "3.0.0"
-    assert APP_METADATA["name"] == "LuuPass"
-    assert APP_METADATA["repository"] == "thinh1234-cyber/luu_pass"
-    assert APP_METADATA["git_remote_url"] == "https://github.com/thinh1234-cyber/luu_pass.git"
+    assert APP_METADATA["name"] == "PassGuard Prototype"
+    assert APP_METADATA["repository"] == "thinh1234-cyber/PassGuard-Prototype"
+    assert APP_METADATA["git_remote_url"] == "https://github.com/thinh1234-cyber/PassGuard-Prototype.git"
 
 
 def test_parse_version_normalizes_v_prefix_and_missing_patch():
@@ -59,11 +59,11 @@ def test_is_newer_version_uses_current_version_default():
 
 
 def test_github_release_urls_use_project_repository():
-    assert github_releases_url() == "https://github.com/thinh1234-cyber/luu_pass/releases"
-    assert git_remote_url() == "https://github.com/thinh1234-cyber/luu_pass.git"
-    assert github_releases_api_url() == "https://api.github.com/repos/thinh1234-cyber/luu_pass/releases"
-    assert github_latest_release_api_url() == "https://api.github.com/repos/thinh1234-cyber/luu_pass/releases/latest"
-    assert github_release_api_url("v3.0.1") == "https://api.github.com/repos/thinh1234-cyber/luu_pass/releases/tags/v3.0.1"
+    assert github_releases_url() == "https://github.com/thinh1234-cyber/PassGuard-Prototype/releases"
+    assert git_remote_url() == "https://github.com/thinh1234-cyber/PassGuard-Prototype.git"
+    assert github_releases_api_url() == "https://api.github.com/repos/thinh1234-cyber/PassGuard-Prototype/releases"
+    assert github_latest_release_api_url() == "https://api.github.com/repos/thinh1234-cyber/PassGuard-Prototype/releases/latest"
+    assert github_release_api_url("v3.0.1") == "https://api.github.com/repos/thinh1234-cyber/PassGuard-Prototype/releases/tags/v3.0.1"
 
 
 def test_parse_github_release_metadata_and_asset_digest():
@@ -71,15 +71,15 @@ def test_parse_github_release_metadata_and_asset_digest():
     release = parse_github_release(
         {
             "tag_name": "v3.0.1",
-            "name": "LuuPass 3.0.1",
-            "html_url": "https://github.com/thinh1234-cyber/luu_pass/releases/tag/v3.0.1",
+            "name": "PassGuard Prototype 3.0.1",
+            "html_url": "https://github.com/thinh1234-cyber/PassGuard-Prototype/releases/tag/v3.0.1",
             "published_at": "2026-06-24T00:00:00Z",
             "prerelease": False,
             "draft": False,
             "assets": [
                 {
-                    "name": "LuuPass.exe",
-                    "browser_download_url": "https://example.invalid/LuuPass.exe",
+                    "name": "PassGuardPrototype.exe",
+                    "browser_download_url": "https://example.invalid/PassGuardPrototype.exe",
                     "size": 123,
                     "digest": f"sha256:{digest}",
                 }
@@ -143,7 +143,7 @@ def test_check_for_update_uses_git_ls_remote_runner_without_github_api():
     assert result.update_available is True
     assert result.latest_release.tag_name == "v3.0.1"
     assert result.latest_release.version.normalized == "3.0.1"
-    assert calls[0][0] == ["git", "ls-remote", "--tags", "--refs", "https://github.com/thinh1234-cyber/luu_pass.git"]
+    assert calls[0][0] == ["git", "ls-remote", "--tags", "--refs", "https://github.com/thinh1234-cyber/PassGuard-Prototype.git"]
     assert calls[0][1]["check"] is True
 
 
@@ -158,7 +158,7 @@ def test_check_for_update_falls_back_to_remote_head_when_repo_has_no_tags():
     def fake_runner(args, **kwargs):
         if args[:4] == ["git", "ls-remote", "--tags", "--refs"]:
             return Result("")
-        if args == ["git", "ls-remote", "https://github.com/thinh1234-cyber/luu_pass.git", "HEAD"]:
+        if args == ["git", "ls-remote", "https://github.com/thinh1234-cyber/PassGuard-Prototype.git", "HEAD"]:
             return Result(f"{remote}\tHEAD\n")
         if args == ["git", "rev-parse", "HEAD"]:
             return Result(f"{local}\n")
@@ -175,7 +175,7 @@ def test_check_for_update_falls_back_to_remote_head_when_repo_has_no_tags():
 
 def test_sha256_file_and_verify(tmp_path):
     file_path = tmp_path / "artifact.bin"
-    payload = b"luupass release artifact"
+    payload = b"passguard release artifact"
     file_path.write_bytes(payload)
     expected = hashlib.sha256(payload).hexdigest()
 
@@ -190,20 +190,20 @@ def test_parse_sha256sums_supports_gnu_and_bsd_formats():
     checksums = parse_sha256sums(
         f"""
         # release checksums
-        {first_digest}  LuuPass.exe
-        SHA256 (LuuPass.zip) = {second_digest}
+        {first_digest}  PassGuardPrototype.exe
+        SHA256 (PassGuardPrototype.zip) = {second_digest}
         """
     )
 
     assert checksums == {
-        "LuuPass.exe": first_digest,
-        "LuuPass.zip": second_digest.lower(),
+        "PassGuardPrototype.exe": first_digest,
+        "PassGuardPrototype.zip": second_digest.lower(),
     }
 
 
 def test_parse_sha256sums_rejects_invalid_lines():
     with pytest.raises(ValueError, match="Invalid SHA256SUMS line"):
-        parse_sha256sums("not-a-checksum  LuuPass.exe")
+        parse_sha256sums("not-a-checksum  PassGuardPrototype.exe")
 
 
 def test_normalize_sha256_rejects_invalid_digest():

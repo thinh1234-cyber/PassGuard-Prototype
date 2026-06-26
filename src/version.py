@@ -1,11 +1,11 @@
 """Application version and release metadata."""
 
-APP_NAME = "LuuPass"
-APP_ID = "luupass"
+APP_NAME = "PassGuard Prototype"
+APP_ID = "passguard_prototype"
 APP_VERSION = "3.0.0"
 
 GITHUB_OWNER = "thinh1234-cyber"
-GITHUB_REPO = "luu_pass"
+GITHUB_REPO = "PassGuard-Prototype"
 GIT_REMOTE_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}.git"
 
 APP_METADATA = {

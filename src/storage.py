@@ -5,7 +5,7 @@ from src.crypto import VaultCrypto
 import shutil
 
 class VaultStorage:
-    def __init__(self, filepath="vault.luupass"):
+    def __init__(self, filepath="vault.passguard"):
         self.filepath = filepath
         self.crypto = VaultCrypto()
 

@@ -25,26 +25,27 @@ def legacy_gcm_payload(vault, password):
     ciphertext = AESGCM(key).encrypt(nonce, data, None)
     return GCM1_MAGIC + salt + nonce + ciphertext
 
+
 def test_save_and_load_vault(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
+    vault_path = tmp_path / "vault.passguard"
     storage = make_storage(vault_path)
     vault = Vault(entries=[Entry(title="T", accounts=[Account(username="U", password="P")])])
-    
+
     storage.save(vault, "master")
     assert os.path.exists(vault_path)
     assert vault_path.read_bytes().startswith(A2G1_MAGIC)
-    
+
     loaded_vault = storage.load("master")
     assert loaded_vault.entries[0].title == "T"
 
 
 def test_load_recovers_from_backup_when_main_vault_is_missing(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
+    vault_path = tmp_path / "vault.passguard"
     storage = make_storage(vault_path)
     vault = Vault(entries=[Entry(title="BackupOnly")])
 
     storage.save(vault, "master")
-    backup_path = tmp_path / "vault.luupass.bak1"
+    backup_path = tmp_path / "vault.passguard.bak1"
     backup_path.write_bytes(vault_path.read_bytes())
     vault_path.unlink()
 
@@ -56,14 +57,14 @@ def test_load_recovers_from_backup_when_main_vault_is_missing(tmp_path):
 
 
 def test_verify_backups_reports_valid_and_corrupt_backups(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
+    vault_path = tmp_path / "vault.passguard"
     storage = make_storage(vault_path)
     vault = Vault(entries=[Entry(title="Backup")])
 
     storage.save(vault, "master")
-    backup_path = tmp_path / "vault.luupass.bak1"
+    backup_path = tmp_path / "vault.passguard.bak1"
     backup_path.write_bytes(vault_path.read_bytes())
-    corrupt_path = tmp_path / "vault.luupass.bak2"
+    corrupt_path = tmp_path / "vault.passguard.bak2"
     corrupt_path.write_bytes(b"not a vault")
 
     results = storage.verify_backups("master")
@@ -77,12 +78,12 @@ def test_verify_backups_reports_valid_and_corrupt_backups(tmp_path):
 
 
 def test_change_password_verifies_old_password_and_clears_old_backups(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
+    vault_path = tmp_path / "vault.passguard"
     storage = make_storage(vault_path)
     vault = Vault(entries=[Entry(title="Current")])
 
     storage.save(vault, "old-pass")
-    backup_path = tmp_path / "vault.luupass.bak1"
+    backup_path = tmp_path / "vault.passguard.bak1"
     backup_path.write_bytes(vault_path.read_bytes())
 
     storage.change_password(vault, "old-pass", "new-pass")
@@ -94,7 +95,7 @@ def test_change_password_verifies_old_password_and_clears_old_backups(tmp_path):
 
 
 def test_change_password_wrong_old_password_does_not_overwrite(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
+    vault_path = tmp_path / "vault.passguard"
     storage = make_storage(vault_path)
     vault = Vault(entries=[Entry(title="Current")])
 
@@ -109,12 +110,12 @@ def test_change_password_wrong_old_password_does_not_overwrite(tmp_path):
 
 
 def test_save_without_backups_does_not_clear_backups_before_failed_write(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
+    vault_path = tmp_path / "vault.passguard"
     storage = make_storage(vault_path)
     vault = Vault(entries=[Entry(title="Current")])
 
     storage.save(vault, "master")
-    backup_path = tmp_path / "vault.luupass.bak1"
+    backup_path = tmp_path / "vault.passguard.bak1"
     backup_path.write_bytes(vault_path.read_bytes())
 
     def fail_write(payload):
@@ -129,8 +130,8 @@ def test_save_without_backups_does_not_clear_backups_before_failed_write(tmp_pat
 
 
 def test_import_valid_vault_replaces_current_vault(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
-    import_path = tmp_path / "import.luupass"
+    vault_path = tmp_path / "vault.passguard"
+    import_path = tmp_path / "import.passguard"
     storage = make_storage(vault_path)
     import_storage = make_storage(import_path)
 
@@ -150,8 +151,8 @@ def test_import_valid_vault_replaces_current_vault(tmp_path):
 
 
 def test_import_vault_payload_replaces_current_vault(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
-    import_path = tmp_path / "import.luupass"
+    vault_path = tmp_path / "vault.passguard"
+    import_path = tmp_path / "import.passguard"
     storage = make_storage(vault_path)
     import_storage = make_storage(import_path)
 
@@ -166,8 +167,8 @@ def test_import_vault_payload_replaces_current_vault(tmp_path):
 
 
 def test_import_can_keep_current_session_password(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
-    import_path = tmp_path / "import.luupass"
+    vault_path = tmp_path / "vault.passguard"
+    import_path = tmp_path / "import.passguard"
     storage = make_storage(vault_path)
     import_storage = make_storage(import_path)
 
@@ -183,8 +184,8 @@ def test_import_can_keep_current_session_password(tmp_path):
 
 
 def test_import_payload_can_keep_current_session_password(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
-    import_path = tmp_path / "import.luupass"
+    vault_path = tmp_path / "vault.passguard"
+    import_path = tmp_path / "import.passguard"
     storage = make_storage(vault_path)
     import_storage = make_storage(import_path)
 
@@ -200,8 +201,8 @@ def test_import_payload_can_keep_current_session_password(tmp_path):
 
 
 def test_import_wrong_password_does_not_overwrite_current_vault(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
-    import_path = tmp_path / "import.luupass"
+    vault_path = tmp_path / "vault.passguard"
+    import_path = tmp_path / "import.passguard"
     storage = make_storage(vault_path)
     import_storage = make_storage(import_path)
 
@@ -209,7 +210,7 @@ def test_import_wrong_password_does_not_overwrite_current_vault(tmp_path):
     import_storage.save(Vault(entries=[Entry(title="Imported")]), "import-pass")
     original_payload = vault_path.read_bytes()
 
-    with pytest.raises(ValueError, match="File import không hợp lệ"):
+    with pytest.raises(ValueError, match="File import"):
         storage.import_vault(str(import_path), "wrong-pass")
 
     assert vault_path.read_bytes() == original_payload
@@ -217,8 +218,8 @@ def test_import_wrong_password_does_not_overwrite_current_vault(tmp_path):
 
 
 def test_import_legacy_gcm_vault_reencrypts_to_argon2id(tmp_path):
-    vault_path = tmp_path / "vault.luupass"
-    import_path = tmp_path / "legacy_import.luupass"
+    vault_path = tmp_path / "vault.passguard"
+    import_path = tmp_path / "legacy_import.passguard"
     storage = make_storage(vault_path)
     legacy_vault = Vault(entries=[Entry(title="Legacy")])
 

@@ -27,7 +27,7 @@ $flet_path = Get-FletPath
 
 if ($Windows) {
     Write-Host "Building Windows Executable..."
-    & $flet_path pack main.py --name LuuPass --hidden-import pydantic --hidden-import cryptography --hidden-import argon2 --hidden-import argon2.low_level -y
+    & $flet_path pack main.py --name "PassGuard Prototype" --hidden-import pydantic --hidden-import cryptography --hidden-import argon2 --hidden-import argon2.low_level -y
 } else {
     Write-Host "Please specify -Windows flag to build the Windows Executable."
 }

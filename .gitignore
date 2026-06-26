@@ -11,10 +11,10 @@ build/
 dist/
 *.spec
 
-# LuuPass Vaults (never commit encrypted vault material)
-*.luupass
-*.luupass.bak*
-*.luupass.tmp
+# PassGuard Prototype vaults (never commit encrypted vault material)
+*.passguard
+*.passguard.bak*
+*.passguard.tmp
 
 # Local-only development notes / PRD / design references
 architecture.md

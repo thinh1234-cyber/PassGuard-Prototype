@@ -44,7 +44,7 @@ def main(page: ft.Page):
             page.update()
             return
 
-    page.title = "LuuPass"
+    page.title = "PassGuard Prototype"
     page.theme_mode = ft.ThemeMode.DARK
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -83,7 +83,7 @@ def main(page: ft.Page):
         page.add(
             ft.Column(
                 [
-                    ft.Text("LuuPass Vault", size=30, weight=ft.FontWeight.BOLD), 
+                    ft.Text("PassGuard Prototype Vault", size=30, weight=ft.FontWeight.BOLD),
                     password_input, 
                     flet_button("Unlock", on_click=unlock_clicked)
                 ],
@@ -140,7 +140,7 @@ def main(page: ft.Page):
         def on_shutdown():
             current_password[0] = None
             page.controls.clear()
-            page.add(ft.Text("LuuPass has shut down.", color=COLORS.PRIMARY))
+            page.add(ft.Text("PassGuard Prototype has shut down.", color=COLORS.PRIMARY))
             page.update()
 
             window = getattr(page, "window", None)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         url = f"http://127.0.0.1:8550/{SESSION_TOKEN}"
         print("="*60)
         print("="*60)
-        print("LuuPass Vault is running securely in Local Web Mode!")
+        print("PassGuard Prototype Vault is running securely in Local Web Mode!")
         print(f"Please open this link to access your vault:\n\n   {url}\n")
         print("="*60)
         

@@ -461,7 +461,7 @@ class Dashboard(ft.Container):
 
     def request_shutdown(self, e=None):
         self.record_activity()
-        self.guard_dirty(self.shutdown_now, title="Shutdown LuuPass")
+        self.guard_dirty(self.shutdown_now, title="Shutdown PassGuard Prototype")
 
     def filtered_entries(self):
         query = self.search_query.strip().lower()
@@ -533,7 +533,7 @@ class Dashboard(ft.Container):
 
     def build_sidebar(self):
         return ft.Container(
-            width=250,
+            width=300,
             padding=24,
             bgcolor=SIDEBAR,
             border=border_only(right=ft.BorderSide(1, BORDER)),
@@ -551,7 +551,7 @@ class Dashboard(ft.Container):
                             ),
                             ft.Column(
                                 [
-                                    ft.Text("LuuPass", size=22, color=TEXT, weight=ft.FontWeight.BOLD),
+                                    ft.Text("PassGuard Prototype", size=22, color=TEXT, weight=ft.FontWeight.BOLD),
                                     ft.Text("Offline Vault", size=12, color=MUTED),
                                 ],
                                 spacing=0,
@@ -715,7 +715,7 @@ class Dashboard(ft.Container):
                     bgcolor=SHELL,
                     content=ft.Row(
                         [
-                            ft.Text("LuuPass", color=PRIMARY, size=22, weight=ft.FontWeight.BOLD, expand=True),
+                            ft.Text("PassGuard Prototype", color=PRIMARY, size=22, weight=ft.FontWeight.BOLD, expand=True),
                             ft.IconButton(icon=ICONS.ADD, icon_color=TEXT, bgcolor=SURFACE_HIGH, on_click=self.add_new_entry, width=48, height=48),
                             ft.IconButton(icon=ICONS.LOCK, icon_color=MUTED, tooltip="Lock Vault", on_click=self.request_lock, width=48, height=48),
                         ],
@@ -980,7 +980,7 @@ class Dashboard(ft.Container):
                     ),
                     ft.Divider(color=BORDER),
                     self.section_title("Appearance"),
-                    ft.Text(f"LuuPass v{APP_VERSION}", color=MUTED, size=13),
+                    ft.Text(f"PassGuard Prototype v{APP_VERSION}", color=MUTED, size=13),
                     ft.Column([flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme), check_updates_btn], spacing=8)
                     if self.is_mobile else ft.Row([flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme), check_updates_btn], spacing=8),
                     ft.Container(height=4),
@@ -1096,7 +1096,7 @@ class Dashboard(ft.Container):
         elif result.update_available:
             message = f"Update available: {release.version.normalized}\n{release.html_url}"
         else:
-            message = f"LuuPass is up to date.\nCurrent: {APP_VERSION}\nLatest: {release.version.normalized}"
+            message = f"PassGuard Prototype is up to date.\nCurrent: {APP_VERSION}\nLatest: {release.version.normalized}"
 
         def open_releases(e=None):
             page = self.get_page()
@@ -1186,8 +1186,8 @@ class Dashboard(ft.Container):
         picker_type = file_type_custom()
         kwargs = {
             "dialog_title": "Export Vault",
-            "file_name": "vault_backup.luupass",
-            "allowed_extensions": ["luupass"],
+            "file_name": "vault_backup.passguard",
+            "allowed_extensions": ["passguard"],
         }
         if picker_type:
             kwargs["file_type"] = picker_type
@@ -1228,7 +1228,7 @@ class Dashboard(ft.Container):
 
         picker_type = file_type_custom()
         kwargs = {
-            "allowed_extensions": ["luupass"],
+            "allowed_extensions": ["passguard"],
             "allow_multiple": False,
         }
         if picker_type:
@@ -1260,7 +1260,7 @@ class Dashboard(ft.Container):
             self.show_snack(f"Directory not found: {dest_dir}", bgcolor=ERROR)
             return
 
-        dest_file = os.path.join(dest_dir, "vault_backup.luupass")
+        dest_file = os.path.join(dest_dir, "vault_backup.passguard")
         try:
             shutil.copy(self.vault_filepath, dest_file)
             self.show_snack(f"Exported to {dest_file}", bgcolor=SUCCESS)
