@@ -106,10 +106,11 @@ Hãy mở đúng URL được in trong terminal. Import/export trên browser ph�
 
 ```bash
 pkg update && pkg upgrade
-pkg install python git rust
+pkg install python git rust clang make binutils pkg-config openssl libffi
 git clone https://github.com/thinh1234-cyber/PassGuard-Prototype.git
 cd PassGuard-Prototype
-pkg install python-cryptography
+export ANDROID_API_LEVEL=$(getprop ro.build.version.sdk)
+pip install pydantic-core
 pip install -r requirements.txt
 python main.py --web
 ```
