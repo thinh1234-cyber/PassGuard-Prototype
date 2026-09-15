@@ -1,5 +1,6 @@
 flet==0.85.3
+flet-cli==0.85.3
 cryptography
 pydantic
-pytest
+pytest>=8.2,<9
 argon2-cffi

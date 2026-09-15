@@ -9,6 +9,7 @@ __pycache__/
 # Flet / Build
 build/
 dist/
+release/
 *.spec
 
 # PassGuard Prototype vaults (never commit encrypted vault material)

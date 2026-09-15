@@ -6,7 +6,7 @@
 
 Phiên bản 3.0.0 | Python 3.10+ | Flet UI | Local encrypted storage
 
-[Tính năng](#tính-năng) | [Cài đặt](#cài-đặt) | [Sử dụng](#sử-dụng) | [Bảo mật](#bảo-mật) | [Kiến trúc](#kiến-trúc) | [Build](#build)
+[Tính năng](#tính-năng) | [Cài đặt](#cài-đặt) | [Sử dụng](#sử-dụng) | [Build Windows](#build-windows-exe) | [Bảo mật](#bảo-mật) | [Kiến trúc](#kiến-trúc)
 
 </div>
 
@@ -114,6 +114,31 @@ pip install pydantic-core
 pip install -r requirements.txt
 python main.py --web
 ```
+
+## Build Windows EXE
+
+Từ thư mục project trên Windows, chạy:
+
+```powershell
+python -m pip install -r requirements.txt
+.\build.ps1
+```
+
+Kết quả là một file duy nhất tại:
+
+```text
+release\PassGuardPrototype.exe
+```
+
+File `.exe` có thể chép sang máy Windows khác và chạy trực tiếp, không cần cài Python. Lần chạy đầu tiên có thể chậm hơn một chút vì dạng single-file sẽ tự giải nén runtime tạm thời. Vault được tạo ở thư mục hiện hành, vì vậy nên đặt `.exe` trong một thư mục riêng trước khi bắt đầu dùng.
+
+Khi cần xem lỗi runtime trong console trong lúc phát triển:
+
+```powershell
+.\build.ps1 -Clean -DebugConsole
+```
+
+Thư mục `release/` chỉ chứa artefact build và đã được Git ignore.
 
 ---
 
