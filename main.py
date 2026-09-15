@@ -1,8 +1,10 @@
-import flet as ft
-from src.storage import VaultStorage
-from src.ui.dashboard import Dashboard
 import os
 import threading
+
+import flet as ft
+
+from src.storage import VaultStorage
+from src.ui.dashboard import Dashboard
 
 COLORS = getattr(ft, "Colors", None) or getattr(ft, "colors")
 

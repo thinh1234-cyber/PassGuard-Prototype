@@ -1,9 +1,9 @@
+import asyncio
 import hashlib
 import inspect
 import os
 import shutil
 import threading
-import asyncio
 
 import flet as ft
 

@@ -60,7 +60,7 @@ PassGuard Prototype là ứng dụng quản lý mật khẩu nhẹ, ưu tiên s�
 
 ### Yêu cầu
 
-- Python 3.10 trở lên
+- Python 3.12
 - Git, khuyến nghị dùng để clone project và check update
 
 ### Setup
