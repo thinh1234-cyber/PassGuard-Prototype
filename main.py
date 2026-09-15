@@ -2,11 +2,8 @@ import flet as ft
 from src.storage import VaultStorage
 from src.ui.dashboard import Dashboard
 import os
-import secrets
-import sys
 import threading
 
-SESSION_TOKEN = secrets.token_urlsafe(16)
 COLORS = getattr(ft, "Colors", None) or getattr(ft, "colors")
 
 
@@ -39,17 +36,12 @@ def show_snack(page, message, bgcolor=None):
 def is_android_page(page: ft.Page) -> bool:
     return "android" in str(getattr(page, "platform", "")).lower()
 
-def main(page: ft.Page):
-    if "--web" in sys.argv:
-        if page.route != f"/{SESSION_TOKEN}":
-            page.title = "Access Denied"
-            page.controls.clear()
-            page.add(ft.Text("403 Forbidden: Invalid or missing token. Please use the terminal link.", color=COLORS.ERROR, size=20))
-            page.update()
-            return
 
+def main(page: ft.Page):
     page.title = "PassGuard Prototype"
     page.theme_mode = ft.ThemeMode.DARK
+    page.padding = 0
+    page.spacing = 0
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     
@@ -62,10 +54,10 @@ def main(page: ft.Page):
         page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         
         password_input = ft.TextField(
-            label="Master Password", 
-            password=True, 
-            can_reveal_password=True, 
-            width=300,
+            label="Master Password",
+            password=True,
+            can_reveal_password=True,
+            expand=True,
             on_submit=lambda e: unlock_clicked(e)
         )
         
@@ -84,17 +76,35 @@ def main(page: ft.Page):
                 page.add(ft.Text(f"CRASH: {ex}\n\n{traceback.format_exc()}", color=COLORS.ERROR, selectable=True))
                 page.update()
 
-        page.add(
-            ft.Column(
-                [
-                    ft.Text("PassGuard Prototype Vault", size=30, weight=ft.FontWeight.BOLD),
-                    password_input, 
-                    flet_button("Unlock", on_click=unlock_clicked)
-                ],
-                alignment=ft.MainAxisAlignment.CENTER, 
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER
-            )
-        )
+        page.add(ft.SafeArea(
+            expand=True,
+            content=ft.Container(
+                expand=True,
+                padding=20,
+                alignment=ft.Alignment.CENTER,
+                content=ft.Container(
+                    width=360,
+                    content=ft.Column(
+                        [
+                            ft.Text("PassGuard Prototype", size=28, weight=ft.FontWeight.BOLD),
+                            ft.Text("Offline encrypted vault", color=COLORS.OUTLINE),
+                            ft.Container(height=8),
+                            password_input,
+                            flet_button(
+                                "Unlock",
+                                icon=getattr(ft.Icons, "LOCK_OPEN", None),
+                                on_click=unlock_clicked,
+                                height=48,
+                                style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                        spacing=12,
+                    ),
+                ),
+            ),
+        ))
         password_input.focus()
 
     def show_dashboard(vault):
@@ -153,7 +163,7 @@ def main(page: ft.Page):
             page.update()
 
             window = getattr(page, "window", None)
-            if window and not page.web:
+            if window:
                 close_window = getattr(window, "destroy", None) or getattr(window, "close", None)
                 if close_window:
                     close_window()
@@ -167,53 +177,4 @@ def main(page: ft.Page):
     show_login()
 
 if __name__ == "__main__":
-    if "--web" in sys.argv:
-        import webbrowser
-        import time
-        
-        # Monkey-patch to block Flet from opening the unauthenticated root URL
-        original_open = webbrowser.open
-        webbrowser.open = lambda url, new=0, autoraise=True: None
-        
-        url = f"http://127.0.0.1:8550/{SESSION_TOKEN}"
-        print("="*60)
-        print("="*60)
-        print("PassGuard Prototype Vault is running securely in Local Web Mode!")
-        print(f"Please open this link to access your vault:\n\n   {url}\n")
-        print("="*60)
-        
-        def open_browser():
-            time.sleep(1.5)
-            import subprocess
-            import os
-            
-            is_termux = "com.termux" in os.environ.get("PREFIX", "")
-            opened = False
-            
-            if is_termux:
-                try:
-                    # Android Termux: Try Chrome Incognito
-                    subprocess.run([
-                        "am", "start", "-n", "com.android.chrome/com.google.android.apps.chrome.Main", 
-                        "-d", url, "--es", "com.google.android.apps.chrome.EXTRA_OPEN_NEW_INCOGNITO_TAB", "true"
-                    ], check=True, capture_output=True)
-                    opened = True
-                except Exception:
-                    pass
-            elif sys.platform == "win32":
-                try:
-                    # Windows: Try Chrome Incognito
-                    subprocess.run(["cmd", "/c", f"start chrome --incognito {url}"], check=True, capture_output=True)
-                    opened = True
-                except Exception:
-                    pass
-            
-            if not opened:
-                # Fallback to default browser
-                original_open(url)
-            
-        threading.Thread(target=open_browser, daemon=True).start()
-        
-        run_flet(main, view=ft.AppView.WEB_BROWSER, port=8550, host="127.0.0.1")
-    else:
-        run_flet(main)
+    run_flet(main)

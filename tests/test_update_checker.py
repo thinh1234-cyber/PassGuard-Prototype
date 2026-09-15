@@ -53,6 +53,17 @@ def test_github_actions_android_workflow_builds_and_uploads_apk():
     assert "actions/upload-artifact@v4" in workflow
 
 
+def test_runtime_is_native_only_without_web_or_termux_dependencies():
+    main_source = (PROJECT_ROOT / "main.py").read_text(encoding="utf-8")
+    dashboard_source = (PROJECT_ROOT / "src" / "ui" / "dashboard.py").read_text(encoding="utf-8")
+    development_requirements = (PROJECT_ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
+
+    assert "--web" not in main_source
+    assert "127.0.0.1" not in main_source
+    assert "page.web" not in dashboard_source
+    assert "flet-web" not in development_requirements
+
+
 def test_parse_version_normalizes_v_prefix_and_missing_patch():
     assert parse_version("v3.1").normalized == "3.1.0"
     assert parse_version("3.1.4+build.7").normalized == "3.1.4"

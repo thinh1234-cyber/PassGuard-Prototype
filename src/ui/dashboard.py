@@ -1,7 +1,6 @@
 import hashlib
 import inspect
 import os
-import platform
 import shutil
 import threading
 import asyncio
@@ -133,16 +132,12 @@ def icon_or(name, fallback):
 def default_export_dir():
     candidates = [
         os.environ.get("LUUPASS_EXPORT_DIR"),
-        os.path.expanduser("~/storage/downloads"),
-        "/storage/emulated/0/Download",
         os.path.expanduser("~/Downloads"),
     ]
     for path in candidates:
         if path and os.path.isdir(path):
             return path
 
-    if "android" in platform.platform().lower():
-        return "/storage/emulated/0/Download"
     return os.path.expanduser("~/Downloads")
 
 
@@ -188,6 +183,7 @@ class Dashboard(ft.Container):
         self.is_busy = False
         self.busy_message = ""
         self.idle_lock_seconds = int(os.environ.get("LUUPASS_IDLE_LOCK_SECONDS", "300"))
+        self._layout_initialized = False
 
         self.export_picker = self.create_file_picker(self.export_result)
         self.export_folder_picker = self.create_file_picker(self.export_folder_result)
@@ -202,9 +198,11 @@ class Dashboard(ft.Container):
         if self.uses_legacy_file_picker():
             page.overlay.extend([self.export_picker, self.export_folder_picker, self.import_picker])
         page.on_resize = self.handle_resize
+        page.padding = 0
+        page.spacing = 0
         page.bgcolor = BG
         self.reset_idle_lock_timer()
-        self.handle_resize()
+        self.handle_resize(force=True)
 
     def will_unmount(self):
         self.clear_clipboard_now()
@@ -355,20 +353,24 @@ class Dashboard(ft.Container):
         self.is_busy = message is not None
         self.busy_message = message or ""
         if self.get_page():
-            self.handle_resize()
+            self.handle_resize(force=True)
 
-    def handle_resize(self, e=None):
+    def handle_resize(self, e=None, force=False):
         page = self.get_page()
         if not page:
             return
-        self.is_mobile = page.width < 820
+        is_mobile = page.width < 820
+        if self._layout_initialized and not force and self.is_mobile == is_mobile:
+            return
+        self.is_mobile = is_mobile
         shell = self.build_mobile_shell() if self.is_mobile else self.build_desktop_shell()
         self.content = self.with_busy_overlay(shell)
+        self._layout_initialized = True
         self.update()
 
     def refresh(self):
         if self.get_page():
-            self.handle_resize()
+            self.handle_resize(force=True)
 
     def capture_entry_snapshot(self, entry, is_new=False):
         self.selected_entry = entry
@@ -487,7 +489,7 @@ class Dashboard(ft.Container):
         return ft.Container(
             width=size,
             height=size,
-            border_radius=12,
+            border_radius=8,
             bgcolor=palette[color_idx],
             alignment=alignment_center(),
             content=ft.Text(letter, color=ON_PRIMARY, size=18, weight=ft.FontWeight.BOLD),
@@ -496,7 +498,7 @@ class Dashboard(ft.Container):
     def text_button(self, label, icon, on_click, selected=False):
         return ft.Container(
             height=48,
-            border_radius=10,
+            border_radius=8,
             bgcolor=PRIMARY_CONTAINER if selected else None,
             padding=padding_symmetric(horizontal=12, vertical=8),
             on_click=on_click,
@@ -520,13 +522,29 @@ class Dashboard(ft.Container):
             height=48,
         )
 
+    def command_button(self, label, icon, on_click, primary=False, expand=False):
+        return flet_button(
+            label,
+            icon=icon,
+            on_click=on_click,
+            expand=expand,
+            height=48,
+            elevation=0,
+            color=ON_PRIMARY if primary else TEXT,
+            bgcolor=PRIMARY_CONTAINER if primary else SURFACE_HIGH,
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=8),
+                padding=padding_symmetric(horizontal=14, vertical=0),
+            ),
+        )
+
     def search_field(self):
         return ft.TextField(
             hint_text="Search vault...",
             value=self.search_query,
             prefix_icon=ICONS.SEARCH,
             on_change=self.on_search_change,
-            border_radius=12,
+            border_radius=8,
             bgcolor=SURFACE,
             border_color=OUTLINE,
             focused_border_color=PRIMARY,
@@ -548,7 +566,7 @@ class Dashboard(ft.Container):
                             ft.Container(
                                 width=42,
                                 height=42,
-                                border_radius=12,
+                                border_radius=8,
                                 bgcolor=PRIMARY_CONTAINER,
                                 alignment=alignment_center(),
                                 content=ft.Icon(ICONS.SHIELD, color=ON_PRIMARY, size=24),
@@ -566,7 +584,7 @@ class Dashboard(ft.Container):
                     ft.Container(height=20),
                     ft.Container(
                         padding=16,
-                        border_radius=16,
+                        border_radius=8,
                         bgcolor=SURFACE,
                         border=border_all(1, BORDER),
                         content=ft.Column(
@@ -601,7 +619,7 @@ class Dashboard(ft.Container):
         selected = self.selected_entry == entry and not self.show_settings
         return ft.Container(
             height=76,
-            border_radius=12,
+            border_radius=8,
             bgcolor=SURFACE_HIGH if selected else SURFACE,
             border=border_all(1, PRIMARY if selected else BORDER),
             padding=padding_only(left=12, right=12, top=10, bottom=10),
@@ -669,7 +687,7 @@ class Dashboard(ft.Container):
                     header,
                     ft.Container(
                         expand=True,
-                        content=ft.ListView(list_controls, spacing=8, item_extent=84, cache_extent=420, padding=padding_only(top=6), expand=True),
+                        content=ft.ListView(list_controls, spacing=8, item_extent=84, cache_extent=672, padding=padding_only(top=6), expand=True),
                     ),
                 ],
                 expand=True,
@@ -691,44 +709,48 @@ class Dashboard(ft.Container):
     def build_mobile_shell(self):
         if self.selected_entry or self.show_settings:
             title = "Settings" if self.show_settings else (self.selected_entry.title or "Entry Details")
-            return ft.Column(
+            shell = ft.Column(
                 [
                     ft.Container(
-                        height=64,
-                        padding=padding_symmetric(horizontal=12, vertical=8),
+                        height=56,
+                        padding=padding_symmetric(horizontal=12, vertical=4),
                         bgcolor=SHELL,
                         border=border_only(bottom=ft.BorderSide(1, BORDER)),
                         content=ft.Row(
                             [
-                                ft.IconButton(icon=ICONS.ARROW_BACK, icon_color=MUTED, on_click=self.go_back),
-                                ft.Text(title, color=TEXT, size=18, weight=ft.FontWeight.W_600, expand=True, overflow=ft.TextOverflow.ELLIPSIS),
+                                ft.IconButton(icon=ICONS.ARROW_BACK, icon_color=MUTED, tooltip="Back", on_click=self.go_back, width=48, height=48),
+                                ft.Text(title, color=TEXT, size=18, weight=ft.FontWeight.W_600, expand=True, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                                 ft.IconButton(icon=ICONS.LOCK, icon_color=MUTED, tooltip="Lock Vault", on_click=self.request_lock, width=48, height=48),
                             ],
+                            spacing=4,
                         ),
                     ),
-                    ft.Container(expand=True, padding=16, bgcolor=BG, content=self.build_detail_panel()),
+                    ft.Container(expand=True, padding=padding_only(left=16, right=16, top=16, bottom=12), bgcolor=BG, content=self.build_detail_panel()),
                 ],
                 expand=True,
+                spacing=0,
             )
+            return ft.SafeArea(content=shell, expand=True)
 
-        return ft.Column(
+        shell = ft.Column(
             [
                 ft.Container(
-                    height=64,
-                    padding=padding_symmetric(horizontal=16, vertical=10),
+                    height=56,
+                    padding=padding_symmetric(horizontal=16, vertical=4),
                     bgcolor=SHELL,
                     content=ft.Row(
                         [
-                            ft.Text("PassGuard Prototype", color=PRIMARY, size=22, weight=ft.FontWeight.BOLD, expand=True),
+                            ft.Text("PassGuard", color=PRIMARY, size=22, weight=ft.FontWeight.BOLD, expand=True, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS),
                             ft.IconButton(icon=ICONS.ADD, icon_color=TEXT, bgcolor=SURFACE_HIGH, on_click=self.add_new_entry, width=48, height=48),
                             ft.IconButton(icon=ICONS.LOCK, icon_color=MUTED, tooltip="Lock Vault", on_click=self.request_lock, width=48, height=48),
                         ],
+                        spacing=4,
                     ),
                 ),
                 ft.Container(
-                    margin=margin_only(left=16, right=16, top=12, bottom=4),
-                    padding=16,
-                    border_radius=16,
+                    margin=margin_only(left=16, right=16, top=12, bottom=0),
+                    padding=14,
+                    border_radius=8,
                     bgcolor=SURFACE,
                     border=border_all(1, BORDER),
                     content=ft.Row(
@@ -736,14 +758,14 @@ class Dashboard(ft.Container):
                             ft.Column(
                                 [
                                     ft.Text("Vault Status", color=MUTED, size=12, weight=ft.FontWeight.W_600),
-                                    ft.Row([ft.Icon(ICONS.CHECK_CIRCLE, color=SUCCESS, size=20), ft.Text("Secure", color=TEXT, size=22, weight=ft.FontWeight.W_600)], spacing=8),
+                                    ft.Row([ft.Icon(ICONS.CHECK_CIRCLE, color=SUCCESS, size=20), ft.Text("Secure", color=TEXT, size=20, weight=ft.FontWeight.W_600)], spacing=8),
                                 ],
                                 expand=True,
                                 spacing=4,
                             ),
                             ft.Column(
                                 [
-                                    ft.Text(str(len(self.vault.entries)), color=PRIMARY, size=34, weight=ft.FontWeight.BOLD),
+                                    ft.Text(str(len(self.vault.entries)), color=PRIMARY, size=28, weight=ft.FontWeight.BOLD),
                                     ft.Text("Items", color=MUTED, size=12),
                                 ],
                                 horizontal_alignment=ft.CrossAxisAlignment.END,
@@ -754,7 +776,7 @@ class Dashboard(ft.Container):
                 ),
                 self.build_list_panel(mobile=True),
                 ft.Container(
-                    height=64,
+                    height=60,
                     padding=padding_symmetric(horizontal=20, vertical=8),
                     bgcolor=SHELL,
                     border=border_only(top=ft.BorderSide(1, BORDER)),
@@ -771,6 +793,7 @@ class Dashboard(ft.Container):
             expand=True,
             spacing=0,
         )
+        return ft.SafeArea(content=shell, expand=True)
 
     def build_detail_panel(self):
         if self.show_settings:
@@ -778,7 +801,7 @@ class Dashboard(ft.Container):
         if not self.selected_entry:
             return ft.Container(
                 expand=True,
-                border_radius=18,
+                border_radius=8,
                 bgcolor=SURFACE,
                 border=border_all(1, BORDER),
                 alignment=alignment_center(),
@@ -829,7 +852,7 @@ class Dashboard(ft.Container):
 
         return ft.Container(
             expand=True,
-            border_radius=18,
+            border_radius=8,
             bgcolor=SURFACE,
             border=border_all(1, BORDER),
             padding=20,
@@ -842,13 +865,13 @@ class Dashboard(ft.Container):
                     ft.Container(height=4),
                     self.section_title("Linked Accounts"),
                     ft.Column(account_controls, spacing=10),
-                    flet_button("Add Another Account", icon=ICONS.ADD, on_click=lambda e: self.add_account(entry)),
+                    self.command_button("Add Another Account", ICONS.ADD, lambda e: self.add_account(entry)),
                     ft.Divider(color=BORDER),
                     notes_field,
                     ft.Row(
                         [
                             ft.Container(expand=True),
-                            flet_button("Save Changes", icon=ICONS.SAVE, bgcolor=PRIMARY_CONTAINER, color=ON_PRIMARY, on_click=self.save_current_entry),
+                            self.command_button("Save Changes", ICONS.SAVE, self.save_current_entry, primary=True),
                         ],
                     ),
                 ],
@@ -902,7 +925,7 @@ class Dashboard(ft.Container):
 
         return ft.Container(
             padding=16,
-            border_radius=14,
+            border_radius=8,
             bgcolor=SURFACE_LOW,
             border=border_all(1, BORDER),
             content=ft.Column(
@@ -932,18 +955,15 @@ class Dashboard(ft.Container):
             tooltip="Choose Export Folder",
             on_click=self.choose_export_folder,
         )
-        export_to_folder_btn = flet_button("Export to Folder", icon=ICONS.DOWNLOAD, on_click=self.export_to_path)
-        page = self.get_page()
-        save_as_label = "Download Vault" if page and getattr(page, "web", False) else "Save As..."
-        if native_android:
-            save_as_label = "Export Vault"
-        save_as_btn = flet_button(save_as_label, icon=ICONS.SAVE, on_click=self.save_as_export)
-        import_btn = flet_button("Import Vault", icon=ICONS.UPLOAD, on_click=self.pick_import_vault)
-        verify_backups_btn = flet_button("Verify Backups", icon=ICONS.CHECK_CIRCLE, on_click=self.run_backup_diagnostics)
-        check_updates_btn = flet_button("Check Updates", icon=icon_or("UPDATE", icon_or("REFRESH", ICONS.SETTINGS)), on_click=self.check_updates)
-        current_pass_field = ft.TextField(label="Current Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
-        new_pass_field = ft.TextField(label="New Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
-        confirm_pass_field = ft.TextField(label="Confirm New Password", password=True, can_reveal_password=True, width=320, bgcolor=SURFACE_LOW, border_color=OUTLINE, focused_border_color=PRIMARY, color=TEXT)
+        export_to_folder_btn = self.command_button("Export to Folder", ICONS.DOWNLOAD, self.export_to_path)
+        save_as_btn = self.command_button("Export Vault", ICONS.SAVE, self.save_as_export, primary=True)
+        import_btn = self.command_button("Import Vault", ICONS.UPLOAD, self.pick_import_vault)
+        verify_backups_btn = self.command_button("Verify Backups", ICONS.CHECK_CIRCLE, self.run_backup_diagnostics)
+        check_updates_btn = self.command_button("Check Updates", icon_or("UPDATE", icon_or("REFRESH", ICONS.SETTINGS)), self.check_updates)
+        theme_btn = self.command_button("Toggle Light/Dark Mode", ICONS.PALETTE, self.toggle_theme)
+        current_pass_field = self.styled_text_field("Current Password", "", lambda e: None, expand=True, password=True, can_reveal_password=True)
+        new_pass_field = self.styled_text_field("New Password", "", lambda e: None, expand=True, password=True, can_reveal_password=True)
+        confirm_pass_field = self.styled_text_field("Confirm New Password", "", lambda e: None, expand=True, password=True, can_reveal_password=True)
 
         def change_pass_clicked(e):
             self.record_activity()
@@ -970,71 +990,67 @@ class Dashboard(ft.Container):
             except Exception as ex:
                 self.show_snack(f"Password change failed: {ex}", bgcolor=ERROR)
 
-        return ft.Container(
-            expand=True,
-            border_radius=18,
-            bgcolor=SURFACE,
-            border=border_all(1, BORDER),
-            padding=20,
-            content=ft.Column(
-                [
-                    ft.Row(
-                        [
-                            ft.Icon(ICONS.SETTINGS, color=PRIMARY, size=30),
-                            ft.Column([ft.Text("Settings", color=TEXT, size=26, weight=ft.FontWeight.BOLD), ft.Text("Vault controls and local backup flow", color=MUTED, size=13)], spacing=0),
-                        ],
-                        spacing=12,
-                    ),
-                    ft.Divider(color=BORDER),
-                    self.section_title("Appearance"),
-                    ft.Text(f"PassGuard Prototype v{APP_VERSION}", color=MUTED, size=13),
-                    ft.Column([flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme), check_updates_btn], spacing=8)
-                    if self.is_mobile else ft.Row([flet_button("Toggle Light/Dark Mode", icon=ICONS.PALETTE, on_click=self.toggle_theme), check_updates_btn], spacing=8),
-                    ft.Container(height=4),
-                    self.section_title("Change Master Password"),
-                    ft.Column(
-                        [
-                            current_pass_field,
-                            new_pass_field,
-                            confirm_pass_field,
-                            flet_button("Change Password", icon=ICONS.PASSWORD, on_click=change_pass_clicked),
-                        ],
-                        spacing=10,
-                    ),
-                    ft.Container(height=4),
-                    self.section_title("Data Management"),
-                    ft.Text("Import replaces the local vault only after decrypt/parse validation succeeds.", color=MUTED, size=13),
-                    ft.Column([save_as_btn, import_btn], spacing=8)
-                    if native_android else ft.Column(
-                        [
-                            ft.Row([self.export_path_field, choose_export_path_btn], spacing=8),
-                            ft.Column([export_to_folder_btn, save_as_btn, import_btn], spacing=8)
-                            if self.is_mobile else ft.Row([export_to_folder_btn, save_as_btn, import_btn], spacing=8),
-                        ],
-                        spacing=10,
-                    ),
-                    self.section_title("Vault Diagnostics"),
-                    ft.Text(self.vault_summary_text(), color=MUTED, size=13, selectable=True),
-                    verify_backups_btn,
-                    ft.Container(
-                        padding=12,
-                        border_radius=12,
-                        bgcolor=WARNING_BG,
-                        border=border_all(1, WARNING_BORDER),
-                        content=ft.Row(
-                            [
-                                ft.Icon(ICONS.WARNING, color=ERROR, size=20),
-                                ft.Text("Do not unlock real vault data on a device that may still be infected.", color=ERROR, size=13, expand=True),
-                            ],
-                            spacing=10,
-                        ),
-                    ),
-                ],
-                expand=True,
-                scroll=ft.ScrollMode.AUTO,
-                spacing=12,
-            ),
+        def settings_group(title, controls):
+            return ft.Container(
+                padding=16,
+                border_radius=8,
+                bgcolor=SURFACE,
+                border=border_all(1, BORDER),
+                content=ft.Column([self.section_title(title), *controls], spacing=12),
+            )
+
+        appearance_actions = ft.Column([theme_btn, check_updates_btn], spacing=8) if self.is_mobile else ft.Row([theme_btn, check_updates_btn], spacing=8)
+        password_group = settings_group(
+            "Change Master Password",
+            [
+                current_pass_field,
+                new_pass_field,
+                confirm_pass_field,
+                self.command_button("Change Password", ICONS.PASSWORD, change_pass_clicked, primary=True),
+            ],
         )
+        data_actions = [save_as_btn, import_btn] if native_android else [
+            ft.Row([self.export_path_field, choose_export_path_btn], spacing=8),
+            ft.Column([export_to_folder_btn, save_as_btn, import_btn], spacing=8)
+            if self.is_mobile else ft.Row([export_to_folder_btn, save_as_btn, import_btn], spacing=8),
+        ]
+        controls = []
+        if not self.is_mobile:
+            controls.append(ft.Row([ft.Icon(ICONS.SETTINGS, color=PRIMARY, size=28), ft.Text("Settings", color=TEXT, size=26, weight=ft.FontWeight.BOLD)], spacing=10))
+        controls.extend(
+            [
+                settings_group("Appearance", [ft.Text(f"PassGuard Prototype v{APP_VERSION}", color=MUTED, size=13), appearance_actions]),
+                password_group,
+                settings_group(
+                    "Data Management",
+                    [
+                        ft.Text("Import validates decrypt and data structure before replacing this vault.", color=MUTED, size=13),
+                        *data_actions,
+                    ],
+                ),
+                settings_group(
+                    "Vault Diagnostics",
+                    [
+                        ft.Text(self.vault_summary_text(), color=MUTED, size=13, selectable=True),
+                        verify_backups_btn,
+                    ],
+                ),
+                ft.Container(
+                    padding=12,
+                    border_radius=8,
+                    bgcolor=WARNING_BG,
+                    border=border_all(1, WARNING_BORDER),
+                    content=ft.Row(
+                        [
+                            ft.Icon(ICONS.WARNING, color=ERROR, size=20),
+                            ft.Text("Do not unlock real vault data on a device that may still be infected.", color=ERROR, size=13, expand=True),
+                        ],
+                        spacing=10,
+                    ),
+                ),
+            ]
+        )
+        return ft.ListView(controls, expand=True, spacing=12, padding=padding_only(bottom=12), cache_extent=720)
 
     def vault_summary_text(self):
         backup_count = sum(1 for i in range(1, 4) if os.path.exists(f"{self.vault_filepath}.bak{i}"))
@@ -1141,7 +1157,7 @@ class Dashboard(ft.Container):
             min_lines=min_lines,
             password=password,
             can_reveal_password=can_reveal_password,
-            border_radius=12,
+            border_radius=8,
             bgcolor=SURFACE_LOW,
             border_color=OUTLINE,
             focused_border_color=PRIMARY,
@@ -1181,12 +1197,6 @@ class Dashboard(ft.Container):
         self.record_activity()
 
     async def choose_export_folder(self, e):
-        page = self.get_page()
-        if page and getattr(page, "web", False):
-            self.show_web_filepicker_notice()
-            if self.export_path_field and getattr(self.export_path_field, "page", None):
-                self.export_path_field.focus()
-            return
         picker = self.export_folder_picker if self.uses_legacy_file_picker() else ft.FilePicker()
         result = await self.maybe_await(
             picker.get_directory_path(
@@ -1215,7 +1225,7 @@ class Dashboard(ft.Container):
             self.show_snack(f"Export Error: {ex}", bgcolor=ERROR)
             return
 
-        if page and (getattr(page, "web", False) or self.is_android()):
+        if self.is_android():
             kwargs["src_bytes"] = vault_payload
         else:
             kwargs["initial_directory"] = self.export_dir
@@ -1228,9 +1238,7 @@ class Dashboard(ft.Container):
             kwargs.pop("file_type", None)
             result = await self.maybe_await(picker.save_file(**kwargs))
 
-        if page and getattr(page, "web", False):
-            self.show_snack("Vault download started.", bgcolor=SUCCESS)
-        elif self.is_android() and result is not None:
+        if self.is_android() and result is not None:
             self.show_snack("Vault exported successfully.", bgcolor=SUCCESS)
         elif result is not None:
             self.export_result(result)
@@ -1253,8 +1261,7 @@ class Dashboard(ft.Container):
         if picker_type:
             kwargs["file_type"] = picker_type
 
-        page = self.get_page()
-        if page and (getattr(page, "web", False) or self.is_android()):
+        if self.is_android():
             kwargs["with_data"] = True
 
         picker = self.import_picker if self.uses_legacy_file_picker() else ft.FilePicker()
@@ -1266,9 +1273,6 @@ class Dashboard(ft.Container):
             result = await self.maybe_await(picker.pick_files(**kwargs))
         if result is not None:
             self.import_result(result)
-
-    def show_web_filepicker_notice(self):
-        self.show_snack("Browser mode cannot choose folders. Use Download Vault or enter a Termux/server path manually.", bgcolor=ERROR)
 
     def export_to_path(self, e):
         dest_dir = self.export_dir.strip()
@@ -1524,13 +1528,10 @@ class Dashboard(ft.Container):
         try:
             await self.set_clipboard_text(val)
         except Exception:
-            self.show_snack("Clipboard access was blocked by the browser.", bgcolor=ERROR)
+            self.show_snack("Clipboard is unavailable on this device.", bgcolor=ERROR)
             return
 
         message = "Copied to clipboard! (Auto-clears in 15s)"
-        page = self.get_page()
-        if page and getattr(page, "web", False):
-            message = "Copied to clipboard! (Auto-clear is best-effort in browser mode)"
         self.show_snack(message)
         self.schedule_clipboard_clear()
 

@@ -4,7 +4,7 @@
 
 > Password manager offline-first cho vault cá nhân được mã hóa cục bộ.
 
-Phiên bản 3.0.0 | Python 3.10+ | Flet UI | Local encrypted storage
+Phiên bản 3.0.0 | Python 3.12 | Flet UI | Local encrypted storage
 
 [Tính năng](#tính-năng) | [Cài đặt](#cài-đặt) | [Build Android](#build-android-apk) | [Build Windows](#build-windows-exe) | [Bảo mật](#bảo-mật) | [Kiến trúc](#kiến-trúc)
 
@@ -16,7 +16,7 @@ Phiên bản 3.0.0 | Python 3.10+ | Flet UI | Local encrypted storage
 
 PassGuard Prototype là ứng dụng quản lý mật khẩu nhẹ, ưu tiên sử dụng cục bộ. Dữ liệu được lưu trong một file vault đã mã hóa trên thiết bị, không cần cloud server và không tự động đồng bộ qua Internet.
 
-Ứng dụng hỗ trợ chế độ desktop và local web, phù hợp để chạy trên Windows hoặc Android Termux trong khi vault vẫn nằm dưới quyền kiểm soát của người dùng.
+Ứng dụng chỉ chạy native: bản `.exe` trên Windows và bản `.apk` trên Android.
 
 ---
 
@@ -76,7 +76,7 @@ python main.py
 
 ## Sử dụng
 
-### Desktop Mode
+### Native app
 
 ```bash
 python main.py
@@ -86,34 +86,7 @@ python main.py
 2. Tạo platform entry, sau đó thêm một hoặc nhiều account.
 3. Save changes để ghi dữ liệu vào file vault đã mã hóa.
 4. Vào Settings để export/import vault, đổi master password, verify backups hoặc check updates.
-5. Dùng Lock Vault khi rời thiết bị, hoặc Shutdown để đóng app/server.
-
-### Local Web Mode
-
-```bash
-python main.py --web
-```
-
-Ứng dụng bind vào `127.0.0.1` và in ra local URL có token, ví dụ:
-
-```text
-http://127.0.0.1:8550/<token>
-```
-
-Hãy mở đúng URL được in trong terminal. Import/export trên browser phụ thuộc vào khả năng file picker của trình duyệt và nền tảng đang dùng.
-
-### Android Termux
-
-```bash
-pkg update && pkg upgrade
-pkg install python git rust clang make binutils pkg-config openssl libffi
-git clone https://github.com/thinh1234-cyber/PassGuard-Prototype.git
-cd PassGuard-Prototype
-export ANDROID_API_LEVEL=$(getprop ro.build.version.sdk)
-pip install pydantic-core
-pip install -r requirements-dev.txt
-python main.py --web
-```
+5. Dùng Lock Vault khi rời thiết bị, hoặc Shutdown để đóng app trên Windows. Trên Android, Shutdown quay về màn hình khóa để Android quản lý vòng đời app.
 
 ## Build Android APK
 
