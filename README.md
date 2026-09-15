@@ -6,7 +6,7 @@
 
 Phiên bản 3.0.0 | Python 3.10+ | Flet UI | Local encrypted storage
 
-[Tính năng](#tính-năng) | [Cài đặt](#cài-đặt) | [Sử dụng](#sử-dụng) | [Build Windows](#build-windows-exe) | [Bảo mật](#bảo-mật) | [Kiến trúc](#kiến-trúc)
+[Tính năng](#tính-năng) | [Cài đặt](#cài-đặt) | [Build Android](#build-android-apk) | [Build Windows](#build-windows-exe) | [Bảo mật](#bảo-mật) | [Kiến trúc](#kiến-trúc)
 
 </div>
 
@@ -68,7 +68,7 @@ PassGuard Prototype là ứng dụng quản lý mật khẩu nhẹ, ưu tiên s�
 ```bash
 git clone https://github.com/thinh1234-cyber/PassGuard-Prototype.git
 cd PassGuard-Prototype
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 python main.py
 ```
 
@@ -111,16 +111,38 @@ git clone https://github.com/thinh1234-cyber/PassGuard-Prototype.git
 cd PassGuard-Prototype
 export ANDROID_API_LEVEL=$(getprop ro.build.version.sdk)
 pip install pydantic-core
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 python main.py --web
 ```
+
+## Build Android APK
+
+APK là hướng chạy ưu tiên trên Android. Vault của APK được lưu trong app-private storage (`FLET_APP_STORAGE_DATA`), không nằm trong thư mục shared storage. Import và export dùng Android system document picker nên không cần quyền đọc/ghi storage diện rộng.
+
+### Build trên GitHub
+
+1. Push source lên nhánh `main`.
+2. Mở repository trên GitHub, vào **Actions** và chọn **Build Android APK**.
+3. Chọn `arm64-v8a` cho hầu hết điện thoại Android rồi bấm **Run workflow**.
+4. Khi job xanh, tải APK trong phần **Artifacts**. Artifact được giữ 14 ngày.
+
+Workflow chạy test trước khi build và chỉ đóng gói runtime dependencies. Không có vault, backup hoặc keystore trong workflow.
+
+### Build local trên Windows
+
+```powershell
+python -m pip install -r requirements-dev.txt
+.\build.ps1 -Target Apk -Arch arm64-v8a -Clean
+```
+
+APK nằm trong `release\android\`. Bản test tự ký để sideload; khi cần phát hành/update chính thức, dùng Android keystore riêng ngoài repository.
 
 ## Build Windows EXE
 
 Từ thư mục project trên Windows, chạy:
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 .\build.ps1
 ```
 
@@ -175,7 +197,10 @@ vault.passguard.bak3
 .
 |-- main.py
 |-- requirements.txt
+|-- requirements-dev.txt
+|-- pyproject.toml
 |-- build.ps1
+|-- .github/workflows/build-android.yml
 |-- src/
 |   |-- crypto.py
 |   |-- models.py

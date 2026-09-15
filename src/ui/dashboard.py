@@ -232,6 +232,10 @@ class Dashboard(ft.Container):
     def uses_legacy_file_picker(self):
         return not inspect.iscoroutinefunction(self.import_picker.pick_files)
 
+    def is_android(self):
+        page = self.get_page()
+        return "android" in str(getattr(page, "platform", "")).lower()
+
     def show_snack(self, message, bgcolor=None):
         page = self.get_page()
         if not page:
@@ -918,6 +922,7 @@ class Dashboard(ft.Container):
         )
 
     def build_settings_view(self):
+        native_android = self.is_android()
         self.export_path_field = self.styled_text_field("Export Folder Path", self.export_dir, self.on_export_dir_change, expand=True)
 
         choose_export_path_btn = ft.IconButton(
@@ -930,6 +935,8 @@ class Dashboard(ft.Container):
         export_to_folder_btn = flet_button("Export to Folder", icon=ICONS.DOWNLOAD, on_click=self.export_to_path)
         page = self.get_page()
         save_as_label = "Download Vault" if page and getattr(page, "web", False) else "Save As..."
+        if native_android:
+            save_as_label = "Export Vault"
         save_as_btn = flet_button(save_as_label, icon=ICONS.SAVE, on_click=self.save_as_export)
         import_btn = flet_button("Import Vault", icon=ICONS.UPLOAD, on_click=self.pick_import_vault)
         verify_backups_btn = flet_button("Verify Backups", icon=ICONS.CHECK_CIRCLE, on_click=self.run_backup_diagnostics)
@@ -997,7 +1004,8 @@ class Dashboard(ft.Container):
                     ft.Container(height=4),
                     self.section_title("Data Management"),
                     ft.Text("Import replaces the local vault only after decrypt/parse validation succeeds.", color=MUTED, size=13),
-                    ft.Column(
+                    ft.Column([save_as_btn, import_btn], spacing=8)
+                    if native_android else ft.Column(
                         [
                             ft.Row([self.export_path_field, choose_export_path_btn], spacing=8),
                             ft.Column([export_to_folder_btn, save_as_btn, import_btn], spacing=8)
@@ -1098,10 +1106,17 @@ class Dashboard(ft.Container):
         else:
             message = f"PassGuard Prototype is up to date.\nCurrent: {APP_VERSION}\nLatest: {release.version.normalized}"
 
-        def open_releases(e=None):
+        async def open_releases(e=None):
             page = self.get_page()
-            if page and hasattr(page, "launch_url"):
-                page.launch_url(release.html_url or github_releases_url())
+            url = release.html_url or github_releases_url()
+            try:
+                launcher = getattr(ft, "UrlLauncher", None)
+                if launcher:
+                    await self.maybe_await(launcher().launch_url(url))
+                elif page and hasattr(page, "launch_url"):
+                    await self.maybe_await(page.launch_url(url))
+            except Exception as ex:
+                self.show_snack(f"Could not open release page: {ex}", bgcolor=ERROR)
             self.close_dialog(dialog)
 
         dialog = ft.AlertDialog(
@@ -1193,13 +1208,15 @@ class Dashboard(ft.Container):
             kwargs["file_type"] = picker_type
 
         page = self.get_page()
-        if page and getattr(page, "web", False):
-            try:
-                with open(self.vault_filepath, "rb") as f:
-                    kwargs["src_bytes"] = f.read()
-            except Exception as ex:
-                self.show_snack(f"Export Error: {ex}", bgcolor=ERROR)
-                return
+        try:
+            with open(self.vault_filepath, "rb") as f:
+                vault_payload = f.read()
+        except Exception as ex:
+            self.show_snack(f"Export Error: {ex}", bgcolor=ERROR)
+            return
+
+        if page and (getattr(page, "web", False) or self.is_android()):
+            kwargs["src_bytes"] = vault_payload
         else:
             kwargs["initial_directory"] = self.export_dir
 
@@ -1213,6 +1230,8 @@ class Dashboard(ft.Container):
 
         if page and getattr(page, "web", False):
             self.show_snack("Vault download started.", bgcolor=SUCCESS)
+        elif self.is_android() and result is not None:
+            self.show_snack("Vault exported successfully.", bgcolor=SUCCESS)
         elif result is not None:
             self.export_result(result)
 
@@ -1235,7 +1254,7 @@ class Dashboard(ft.Container):
             kwargs["file_type"] = picker_type
 
         page = self.get_page()
-        if page and getattr(page, "web", False):
+        if page and (getattr(page, "web", False) or self.is_android()):
             kwargs["with_data"] = True
 
         picker = self.import_picker if self.uses_legacy_file_picker() else ft.FilePicker()

@@ -1,4 +1,7 @@
 param(
+    [ValidateSet("Windows", "Apk")]
+    [string]$Target = "Windows",
+    [string]$Arch = "arm64-v8a",
     [switch]$Clean,
     [switch]$DebugConsole
 )
@@ -8,6 +11,7 @@ $ErrorActionPreference = "Stop"
 $AppName = "PassGuardPrototype"
 $ProductName = "PassGuard Prototype"
 $ReleaseDirectory = Join-Path $PSScriptRoot "release"
+$AndroidReleaseDirectory = Join-Path $ReleaseDirectory "android"
 
 function Get-FletPath {
     $command = Get-Command flet -ErrorAction SilentlyContinue
@@ -45,8 +49,50 @@ if ($Clean) {
 
 $fletPath = Get-FletPath
 $appVersion = (python -c "from src.version import APP_VERSION; print(APP_VERSION)").Trim()
-$fileVersion = "$appVersion.0"
 
+if ($Target -eq "Apk") {
+    $buildNumber = (git rev-list --count HEAD 2>$null).Trim()
+    if (-not $buildNumber) {
+        $buildNumber = "1"
+    }
+
+    New-Item -ItemType Directory -Path $AndroidReleaseDirectory -Force | Out-Null
+    $arguments = @(
+        "build",
+        "apk",
+        ".",
+        "--output", $AndroidReleaseDirectory,
+        "--arch", $Arch,
+        "--project", "passguard-prototype",
+        "--artifact", $AppName,
+        "--product", $ProductName,
+        "--org", "com.thinh1234",
+        "--bundle-id", "com.thinh1234.passguard",
+        "--company", "Nguyen Thinh - Kyle",
+        "--description", "Offline encrypted password vault",
+        "--build-version", $appVersion,
+        "--build-number", $buildNumber,
+        "--yes",
+        "--no-rich-output"
+    )
+
+    Write-Host "Building Android APK for $Arch..."
+    & $fletPath @arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Android build failed with exit code $LASTEXITCODE."
+    }
+
+    $apk = Get-ChildItem -Path $AndroidReleaseDirectory -Filter "*.apk" -File -Recurse | Select-Object -First 1
+    if (-not $apk) {
+        throw "Android build completed but no APK was created."
+    }
+
+    $sizeMb = [math]::Round($apk.Length / 1MB, 1)
+    Write-Host "Build complete: $($apk.FullName) ($sizeMb MB)"
+    return
+}
+
+$fileVersion = "$appVersion.0"
 New-Item -ItemType Directory -Path $ReleaseDirectory -Force | Out-Null
 
 $arguments = @(

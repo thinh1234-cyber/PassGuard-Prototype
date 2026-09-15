@@ -4,9 +4,21 @@ from src.crypto import VaultCrypto
 
 import shutil
 
+
+VAULT_FILENAME = "vault.passguard"
+
+
+def default_vault_path() -> str:
+    """Return the durable app-private location when Flet provides one."""
+    app_data_dir = os.environ.get("FLET_APP_STORAGE_DATA")
+    if app_data_dir:
+        return os.path.join(app_data_dir, VAULT_FILENAME)
+    return VAULT_FILENAME
+
+
 class VaultStorage:
-    def __init__(self, filepath="vault.passguard"):
-        self.filepath = filepath
+    def __init__(self, filepath: str | os.PathLike[str] | None = None):
+        self.filepath = os.fspath(filepath) if filepath is not None else default_vault_path()
         self.crypto = VaultCrypto()
 
     def _rotate_backups(self):
@@ -30,6 +42,8 @@ class VaultStorage:
         return [f"{self.filepath}.bak{i}" for i in range(1, 4)]
 
     def _atomic_write(self, encrypted_payload: bytes):
+        parent_directory = os.path.dirname(os.path.abspath(self.filepath))
+        os.makedirs(parent_directory, exist_ok=True)
         tmp_filepath = self.filepath + ".tmp"
         with open(tmp_filepath, 'wb') as f:
             f.write(encrypted_payload)

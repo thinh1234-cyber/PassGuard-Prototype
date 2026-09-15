@@ -35,6 +35,10 @@ def show_snack(page, message, bgcolor=None):
         snack_bar.open = True
         page.update()
 
+
+def is_android_page(page: ft.Page) -> bool:
+    return "android" in str(getattr(page, "platform", "")).lower()
+
 def main(page: ft.Page):
     if "--web" in sys.argv:
         if page.route != f"/{SESSION_TOKEN}":
@@ -139,6 +143,11 @@ def main(page: ft.Page):
 
         def on_shutdown():
             current_password[0] = None
+            if is_android_page(page):
+                show_login()
+                page.update()
+                return
+
             page.controls.clear()
             page.add(ft.Text("PassGuard Prototype has shut down.", color=COLORS.PRIMARY))
             page.update()

@@ -10,7 +10,13 @@ __pycache__/
 build/
 dist/
 release/
+.flet/
 *.spec
+
+# Android signing material (keep outside the repository)
+*.jks
+*.keystore
+key.properties
 
 # PassGuard Prototype vaults (never commit encrypted vault material)
 *.passguard

@@ -1,7 +1,7 @@
 import os
 import pytest
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from src.storage import VaultStorage
+from src.storage import VaultStorage, default_vault_path
 from src.models import Vault, Entry, Account
 from src.crypto import A2G1_MAGIC, GCM1_MAGIC, VaultCrypto
 
@@ -37,6 +37,23 @@ def test_save_and_load_vault(tmp_path):
 
     loaded_vault = storage.load("master")
     assert loaded_vault.entries[0].title == "T"
+
+
+def test_default_vault_path_uses_flet_app_data_directory(monkeypatch, tmp_path):
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
+
+    storage = VaultStorage()
+    storage.crypto = fast_crypto()
+    storage.save(Vault(entries=[Entry(title="Android")]), "master")
+
+    assert storage.filepath == str(tmp_path / "vault.passguard")
+    assert storage.load("master").entries[0].title == "Android"
+
+
+def test_default_vault_path_uses_legacy_relative_path_without_flet_environment(monkeypatch):
+    monkeypatch.delenv("FLET_APP_STORAGE_DATA", raising=False)
+
+    assert default_vault_path() == "vault.passguard"
 
 
 def test_load_recovers_from_backup_when_main_vault_is_missing(tmp_path):

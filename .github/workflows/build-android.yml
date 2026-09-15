@@ -1,0 +1,79 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        description: Android CPU architecture for the test APK
+        required: true
+        default: arm64-v8a
+        type: choice
+        options:
+          - arm64-v8a
+          - armeabi-v7a
+          - x86_64
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    name: Build APK (${{ inputs.architecture }})
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Cache Flet and Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.flet
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-flet-${{ runner.os }}-${{ hashFiles('requirements.txt', 'pyproject.toml') }}
+          restore-keys: |
+            android-flet-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Read application version
+        id: version
+        run: echo "value=$(python -c 'from src.version import APP_VERSION; print(APP_VERSION)')" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        run: >-
+          flet build apk .
+          --output release/android
+          --arch ${{ inputs.architecture }}
+          --project passguard-prototype
+          --artifact PassGuardPrototype
+          --product "PassGuard Prototype"
+          --org com.thinh1234
+          --bundle-id com.thinh1234.passguard
+          --company "Nguyen Thinh - Kyle"
+          --description "Offline encrypted password vault"
+          --build-version "${{ steps.version.outputs.value }}"
+          --build-number "${{ github.run_number }}"
+          --yes
+          --no-rich-output
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: passguard-apk-${{ inputs.architecture }}-${{ steps.version.outputs.value }}
+          path: release/android/**/*.apk
+          if-no-files-found: error
+          retention-days: 14

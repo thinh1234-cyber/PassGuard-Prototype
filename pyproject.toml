@@ -1,0 +1,8 @@
+[project]
+name = "passguard-prototype"
+version = "3.0.0"
+description = "Offline encrypted password vault"
+requires-python = ">=3.12,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

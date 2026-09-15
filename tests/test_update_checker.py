@@ -1,4 +1,6 @@
 import hashlib
+import tomllib
+from pathlib import Path
 
 import pytest
 
@@ -24,11 +26,31 @@ from src.update_checker import (
 from src.version import APP_METADATA, APP_VERSION
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
 def test_app_version_metadata_is_defined():
     assert APP_VERSION == "3.0.0"
     assert APP_METADATA["name"] == "PassGuard Prototype"
     assert APP_METADATA["repository"] == "thinh1234-cyber/PassGuard-Prototype"
     assert APP_METADATA["git_remote_url"] == "https://github.com/thinh1234-cyber/PassGuard-Prototype.git"
+
+
+def test_android_build_metadata_matches_application_version():
+    with (PROJECT_ROOT / "pyproject.toml").open("rb") as project_file:
+        project = tomllib.load(project_file)
+
+    assert project["project"]["version"] == APP_VERSION
+    assert project["project"]["requires-python"] == ">=3.12,<3.13"
+
+
+def test_github_actions_android_workflow_builds_and_uploads_apk():
+    workflow = (PROJECT_ROOT / ".github" / "workflows" / "build-android.yml").read_text(encoding="utf-8")
+
+    assert "workflow_dispatch:" in workflow
+    assert "flet build apk" in workflow
+    assert "--arch ${{ inputs.architecture }}" in workflow
+    assert "actions/upload-artifact@v4" in workflow
 
 
 def test_parse_version_normalizes_v_prefix_and_missing_patch():
